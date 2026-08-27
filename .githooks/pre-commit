@@ -1,0 +1,22 @@
+#!/bin/sh
+# Fast feedback on staged Kotlin files before the full pre-push gate: ktlint with
+# auto-format, then re-stage. Heavier checks (detekt, unit tests, assembleDebug)
+# stay in pre-push.
+#
+# Skip once with `git commit --no-verify`.
+
+set -e
+
+cd "$(git rev-parse --show-toplevel)"
+
+staged_kt=$(git diff --cached --name-only --diff-filter=ACMR -- '*.kt' '*.kts')
+
+if [ -z "$staged_kt" ]; then
+    exit 0
+fi
+
+echo "==> pre-commit: ktlintFormat"
+./gradlew --quiet ktlintFormat
+echo "$staged_kt" | xargs git add
+
+echo "==> pre-commit: all checks passed"

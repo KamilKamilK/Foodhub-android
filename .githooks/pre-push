@@ -1,0 +1,24 @@
+#!/bin/sh
+# Full quality gate run locally before every `git push`, mirroring
+# .github/workflows/android-quality.yml so a broken build is caught here, not on CI.
+#
+# Enabled via `git config core.hooksPath .githooks`. Skip once with
+# `git push --no-verify` (do not skip a genuine failure -- fix it and re-run).
+
+set -e
+
+cd "$(git rev-parse --show-toplevel)"
+
+echo "==> pre-push: ktlintCheck"
+./gradlew --quiet ktlintCheck
+
+echo "==> pre-push: detekt"
+./gradlew --quiet detekt
+
+echo "==> pre-push: unit tests"
+./gradlew --quiet testDebugUnitTest
+
+echo "==> pre-push: assembleDebug"
+./gradlew --quiet assembleDebug
+
+echo "==> pre-push: all checks passed"

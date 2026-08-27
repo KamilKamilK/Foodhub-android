@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- A bare Material theme for the manifest; the real look comes from
+         core:designsystem's Compose FoodHubTheme applied in MainActivity. -->
+    <style name="Theme.FoodHubPos" parent="android:Theme.Material.NoActionBar" />
+</resources>

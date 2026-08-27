@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- One concrete backend per deployment (ANDROID_POS_ARCHITECTURE.md 2.4). There
+         is no in-app tenant selection; a build for a client points here. Overridden
+         per build variant / by a productFlavor once real deployments exist. -->
+    <string name="foodhub_api_base_url" translatable="false">https://api.dev.foodhub.pl/</string>
+</resources>

@@ -1,0 +1,104 @@
+package pl.foodhub.pos.feature.sales
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import pl.foodhub.pos.core.designsystem.component.PrimaryButton
+
+@Composable
+fun CartRoute(
+    onCheckoutComplete: () -> Unit,
+    viewModel: CartViewModel = hiltViewModel(),
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val products by viewModel.availableProducts.collectAsStateWithLifecycle()
+
+    LaunchedEffect(state.completedDocumentId) {
+        if (state.completedDocumentId != null) onCheckoutComplete()
+    }
+
+    CartScreen(
+        state = state,
+        products = products,
+        onAdd = viewModel::addProduct,
+        onRemove = viewModel::removeLine,
+        // TODO(Faza 1): real placeId from the paired POS session.
+        onCheckout = { viewModel.checkout(placeId = "", paymentMethod = PaymentMethod.CASH) },
+    )
+}
+
+@Composable
+internal fun CartScreen(
+    state: CartUiState,
+    products: List<PickerProduct>,
+    onAdd: (PickerProduct) -> Unit,
+    onRemove: (String) -> Unit,
+    onCheckout: () -> Unit,
+) {
+    Row(Modifier.fillMaxSize().padding(16.dp)) {
+        Column(Modifier.weight(1f)) {
+            Text("Produkty", style = MaterialTheme.typography.titleLarge)
+            LazyColumn {
+                items(products, key = { it.productId }) { product ->
+                    TextButton(onClick = { onAdd(product) }, modifier = Modifier.fillMaxWidth()) {
+                        Text("${product.name}  ·  ${product.unitPriceGross.formatPln()}")
+                    }
+                }
+            }
+        }
+
+        Column(
+            modifier = Modifier.weight(1f).padding(start = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("Koszyk", style = MaterialTheme.typography.titleLarge)
+            LazyColumn(Modifier.weight(1f)) {
+                items(state.lines, key = { it.productId }) { line ->
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("${line.quantity}×  ${line.productName}", Modifier.weight(1f))
+                        Text(line.lineGross.formatPln())
+                        TextButton(onClick = { onRemove(line.productId) }) { Text("Usuń") }
+                    }
+                }
+            }
+            HorizontalDivider()
+            Text(
+                "Razem: ${state.total.formatPln()}",
+                style = MaterialTheme.typography.titleMedium,
+            )
+            if (state.error) {
+                Text("Nie udało się wystawić paragonu.", color = MaterialTheme.colorScheme.error)
+            }
+            if (state.submitting) {
+                CircularProgressIndicator()
+            } else {
+                PrimaryButton(
+                    text = "Zapłać gotówką",
+                    onClick = onCheckout,
+                    enabled = state.lines.isNotEmpty(),
+                )
+            }
+        }
+    }
+}

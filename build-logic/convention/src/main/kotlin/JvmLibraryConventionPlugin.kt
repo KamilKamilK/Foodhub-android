@@ -22,7 +22,7 @@ class JvmLibraryConventionPlugin : Plugin<Project> {
         }
 
         dependencies {
-            add("testImplementation", libs.findLibrary("junit").get())
+            add("testImplementation", libs.findLibrary("junit4").get())
             add("testImplementation", libs.findLibrary("kotlinx-coroutines-test").get())
         }
     }

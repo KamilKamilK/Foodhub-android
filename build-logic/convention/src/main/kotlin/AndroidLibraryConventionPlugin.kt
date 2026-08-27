@@ -15,12 +15,12 @@ class AndroidLibraryConventionPlugin : Plugin<Project> {
 
         extensions.configure<LibraryExtension> {
             configureKotlinAndroid(this)
-            defaultConfig.targetSdk = libs.findVersion("androidTargetSdk").get().toString().toInt()
-            testOptions.targetSdk = libs.findVersion("androidTargetSdk").get().toString().toInt()
+            // targetSdk for a library only matters for its instrumented tests; the
+            // AAR itself has none. Left at the AGP default until androidTest exists.
         }
 
         dependencies {
-            add("testImplementation", libs.findLibrary("junit").get())
+            add("testImplementation", libs.findLibrary("junit4").get())
             add("testImplementation", libs.findLibrary("kotlinx-coroutines-test").get())
             add("testImplementation", libs.findLibrary("turbine").get())
             add("testImplementation", libs.findLibrary("mockk").get())

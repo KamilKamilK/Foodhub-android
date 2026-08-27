@@ -13,19 +13,20 @@ kotlin {
     jvmToolchain(17)
 }
 
+// build-logic has no version catalog on purpose: an included build that generates
+// org.gradle.accessors.dm.LibrariesForLibs shadows the root build's one on the
+// module buildscript classpath, breaking libs.* in every module that applies a
+// convention plugin. These few coordinates are compile-only; keep the versions in
+// sync with ../gradle/libs.versions.toml.
 dependencies {
-    // Brought in by the consuming module's own `plugins {}` block; the convention
-    // plugin only needs them on the compile classpath to configure their extensions.
-    compileOnly(libs.android.gradlePlugin)
-    compileOnly(libs.kotlin.gradlePlugin)
+    compileOnly("com.android.tools.build:gradle:8.7.3")
+    compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.0")
 
-    // Applied at runtime by the convention plugins via pluginManager.apply(id), so
-    // they must be on the runtime classpath.
-    implementation(libs.compose.compiler.gradlePlugin)
-    implementation(libs.ksp.gradlePlugin)
-    implementation(libs.hilt.gradlePlugin)
-    implementation(libs.ktlint.gradlePlugin)
-    implementation(libs.detekt.gradlePlugin)
+    implementation("org.jetbrains.kotlin:compose-compiler-gradle-plugin:2.1.0")
+    implementation("com.google.devtools.ksp:com.google.devtools.ksp.gradle.plugin:2.1.0-1.0.29")
+    implementation("com.google.dagger:hilt-android-gradle-plugin:2.54")
+    implementation("org.jlleitschuh.gradle:ktlint-gradle:12.1.2")
+    implementation("io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.23.7")
 }
 
 gradlePlugin {

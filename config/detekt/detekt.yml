@@ -1,0 +1,28 @@
+# Deltas on top of detekt's default rules for a Compose UI codebase.
+# buildUponDefaultConfig = true is set in the root build script.
+
+naming:
+  FunctionNaming:
+    # @Composable functions are PascalCase by Compose convention.
+    ignoreAnnotated: ['Composable']
+  MatchingDeclarationName:
+    active: false
+
+style:
+  MagicNumber:
+    ignorePropertyDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+    ignoreAnnotated: ['Composable']
+    ignoreNamedArgument: true
+    ignoreEnums: true
+  ReturnCount:
+    max: 5
+  UnusedPrivateProperty:
+    active: true
+
+complexity:
+  LongMethod:
+    ignoreAnnotated: ['Composable']
+  TooManyFunctions:
+    thresholdInObjects: 20
+    ignoreAnnotatedFunctions: ['Provides', 'Composable']

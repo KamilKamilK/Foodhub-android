@@ -27,21 +27,9 @@ jobs:
               with:
                   # Verifies gradle-wrapper.jar against Gradle's published checksums.
                   validate-wrappers: true
-                  # TEMP: the first CI runs cached a broken kotlin-dsl accessor set
-                  # from a failed configuration. Drop once the build is green.
-                  cache-disabled: true
 
-            - name: ktlint
-              run: ./gradlew ktlintCheck --stacktrace
-
-            - name: detekt
-              run: ./gradlew detekt --stacktrace
-
-            - name: Unit tests
-              run: ./gradlew testDebugUnitTest --stacktrace
-
-            - name: Assemble debug APK
-              run: ./gradlew assembleDebug --stacktrace
+            - name: Quality gate
+              run: ./gradlew ktlintCheck detekt testDebugUnitTest assembleDebug --stacktrace
 
             - name: Upload test reports on failure
               if: failure()

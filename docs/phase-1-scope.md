@@ -8,7 +8,7 @@ offline, bez druku) — walidacja całego kontraktu REST na żywym terminalu".
 
 | Obszar | Stan w szkielecie |
 |---|---|
-| Struktura modułów Gradle (`app`/`build-logic`/`core:*`/`feature:*`) | pełna |
+| Struktura modułów Gradle (`app`/`core:*`/`feature:*`) | pełna |
 | Graf DI (Hilt), nawigacja (Navigation Compose) | pełny |
 | Warstwa sieci: Retrofit/OkHttp, interceptor JWT, refresh na 401, mapowanie błędów | pełna |
 | Logowanie PIN-em (`POST /v1/auth/pos-login`) + bezpieczny zapis tokenów | pełne |

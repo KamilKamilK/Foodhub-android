@@ -14,11 +14,10 @@ layer wired to the real `foodhub-api` contract, PIN login, read-only menu browsi
 and an online-only checkout path. Offline queue, printing, Mercure real-time, FCM and
 fiscalisation (Fazy 2–6) are **not** here yet.
 
-> **This skeleton was committed without being compiled.** It was authored in an
-> environment with no Android SDK / Gradle / JDK 17. The first real quality gate is
-> `.github/workflows/android-quality.yml` (or a local run once the toolchain is set up).
-> Expect to fix compilation and lint issues on the first build —
-> [`docs/bring-up.md`](docs/bring-up.md) is the checklist and lists the risky spots.
+`./gradlew ktlintCheck detekt testDebugUnitTest assembleDebug` is green on JDK 17 +
+Android SDK 35; CI runs the same. The screens compile and package into a debug APK but
+have **not** been run against a live `foodhub-api` yet — that end-to-end pass is what
+closes Faza 1 (see `docs/development/ANDROID_POS_ARCHITECTURE.md` §14).
 
 ## Prerequisites
 
@@ -28,14 +27,15 @@ fiscalisation (Fazy 2–6) are **not** here yet.
 
 ## First-time setup
 
-The Gradle wrapper (jar + scripts, Gradle 8.11.1) is committed. CI verifies the
-wrapper jar checksum. Just enable the hooks:
+The Gradle wrapper (jar + scripts, Gradle 8.11.1) is committed; CI verifies its
+checksum. Enable the hooks:
 
 ```
 git config core.hooksPath .githooks
 ```
 
-Then follow [`docs/bring-up.md`](docs/bring-up.md).
+Remaining hardening (signing config, per-client API URL, cert pinning, instrumented
+tests) is tracked in [`docs/bring-up.md`](docs/bring-up.md).
 
 ## Build & check
 
@@ -52,7 +52,6 @@ checks as CI.
 
 ```
 app/                      Application, Hilt graph, NavHost, MainActivity
-build-logic/              Gradle convention plugins (foodhub.android.*)
 core/
   common/                 ApiResult, DispatcherProvider, Money (grosze)
   designsystem/           Compose theme (foodhub-app palette), PinPad, PrimaryButton
@@ -70,6 +69,12 @@ feature/
 
 Dependency rule: `feature:* -> core:* -> (nothing)`. `core:auth -> core:network` is the
 only allowed cross-`core` edge; it never runs the other way.
+
+Each module's `build.gradle.kts` applies plugins and Android config directly (no
+convention plugins / `build-logic` — an included/`buildSrc` build that generates
+`org.gradle.accessors.dm.LibrariesForLibs` shadows the root catalog on the module
+classpath and breaks `libs.*`). ktlint + detekt are applied to every subproject from
+the root `build.gradle.kts`.
 
 ## REST contract
 

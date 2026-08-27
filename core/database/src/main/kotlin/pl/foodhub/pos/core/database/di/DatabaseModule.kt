@@ -20,7 +20,7 @@ object DatabaseModule {
         @ApplicationContext context: Context,
     ): FoodHubPosDatabase =
         Room.databaseBuilder(context, FoodHubPosDatabase::class.java, "foodhub-pos.db")
-            .fallbackToDestructiveMigration(dropAllTables = true)
+            .fallbackToDestructiveMigration()
             .build()
 
     @Provides

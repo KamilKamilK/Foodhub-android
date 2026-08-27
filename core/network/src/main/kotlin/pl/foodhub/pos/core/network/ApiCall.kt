@@ -42,5 +42,4 @@ suspend fun <T> apiCall(response: Response<T>): ApiResult<T> =
 private fun readField(
     rawBody: String,
     field: String,
-): String? =
-    runCatching { errorJson.parseToJsonElement(rawBody).jsonObject[field]?.jsonPrimitive?.content }.getOrNull()
+): String? = runCatching { errorJson.parseToJsonElement(rawBody).jsonObject[field]?.jsonPrimitive?.content }.getOrNull()

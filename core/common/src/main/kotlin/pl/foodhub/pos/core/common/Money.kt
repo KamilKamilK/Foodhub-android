@@ -15,10 +15,14 @@ value class Money(val minorUnits: Long) {
     fun formatPln(): String {
         val sign = if (minorUnits < 0) "-" else ""
         val abs = kotlin.math.abs(minorUnits)
-        return "$sign${abs / 100},${(abs % 100).toString().padStart(2, '0')} zł"
+        val fraction = (abs % MINOR_UNITS_PER_UNIT).toString().padStart(FRACTION_DIGITS, '0')
+        return "$sign${abs / MINOR_UNITS_PER_UNIT},$fraction zł"
     }
 
     companion object {
         val ZERO = Money(0)
+
+        private const val MINOR_UNITS_PER_UNIT = 100
+        private const val FRACTION_DIGITS = 2
     }
 }

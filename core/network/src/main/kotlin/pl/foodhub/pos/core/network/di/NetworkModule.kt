@@ -13,6 +13,8 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import pl.foodhub.pos.core.common.DefaultDispatcherProvider
 import pl.foodhub.pos.core.common.DispatcherProvider
+import pl.foodhub.pos.core.network.ApiContractVersionInterceptor
+import pl.foodhub.pos.core.network.BuildConfig
 import pl.foodhub.pos.core.network.R
 import pl.foodhub.pos.core.network.api.AuthApi
 import pl.foodhub.pos.core.network.api.MenuApi
@@ -61,6 +63,7 @@ object NetworkModule {
         OkHttpClient.Builder()
             .connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .readTimeout(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .addInterceptor(ApiContractVersionInterceptor(BuildConfig.API_CONTRACT_VERSION))
             .addInterceptor(logging)
             .build()
 
@@ -76,6 +79,7 @@ object NetworkModule {
             // TODO(security, ANDROID_POS_ARCHITECTURE.md section 12): add CertificatePinner
             // for the client's API host once deployments exist — the terminal is a
             // dedicated device, so pinning one cert is justified.
+            .addInterceptor(ApiContractVersionInterceptor(BuildConfig.API_CONTRACT_VERSION))
             .addInterceptor(AuthInterceptor(tokenProvider))
             .addInterceptor(logging)
             .authenticator(TokenRefreshAuthenticator(tokenProvider))

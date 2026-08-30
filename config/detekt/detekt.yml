@@ -23,6 +23,9 @@ style:
 complexity:
   LongMethod:
     ignoreAnnotated: ['Composable']
+  LongParameterList:
+    # A screen's (state, per-event callback...) signature is idiomatic Compose, not a smell.
+    ignoreAnnotated: ['Composable']
   TooManyFunctions:
     thresholdInObjects: 20
     ignoreAnnotatedFunctions: ['Provides', 'Composable']

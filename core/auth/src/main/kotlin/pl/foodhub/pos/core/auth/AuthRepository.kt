@@ -23,6 +23,9 @@ class AuthRepository
                 if (tokens == null) SessionState.LoggedOut else SessionState.Authenticated
             }
 
+        /** The place/POS context of the current session, resolved at login (see [PosSession]). */
+        val posSession: Flow<PosSession?> = tokenStore.posSession
+
         /**
          * PIN-only login for the terminal (POST /v1/auth/pos-login). The device is
          * trusted through pairing on the backend; [posSerialNo] is only needed the
@@ -48,6 +51,7 @@ class AuthRepository
             return when (val result = apiCall { authApi.posLogin(request) }) {
                 is ApiResult.Success -> {
                     tokenStore.save(result.value.token, result.value.refreshToken)
+                    JwtSessionDecoder.decode(result.value.token)?.let(tokenStore::savePosSession)
                     ApiResult.Success(Unit)
                 }
                 is ApiResult.HttpError -> result

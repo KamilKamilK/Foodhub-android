@@ -1,5 +1,6 @@
 package pl.foodhub.pos.feature.sales
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,9 +9,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -40,8 +46,11 @@ fun CartRoute(
         products = products,
         onAdd = viewModel::addProduct,
         onRemove = viewModel::removeLine,
-        // TODO(Faza 1): real placeId from the paired POS session.
-        onCheckout = { viewModel.checkout(placeId = "", paymentMethod = PaymentMethod.CASH) },
+        onInvoiceRequestedChange = viewModel::setInvoiceRequested,
+        onBuyerNameChange = viewModel::onBuyerNameChange,
+        onBuyerNipChange = viewModel::onBuyerNipChange,
+        onToggleAttributeValue = viewModel::toggleAttributeValue,
+        onCheckout = viewModel::checkout,
     )
 }
 
@@ -51,6 +60,10 @@ internal fun CartScreen(
     products: List<PickerProduct>,
     onAdd: (PickerProduct) -> Unit,
     onRemove: (String) -> Unit,
+    onInvoiceRequestedChange: (Boolean) -> Unit,
+    onBuyerNameChange: (String) -> Unit,
+    onBuyerNipChange: (String) -> Unit,
+    onToggleAttributeValue: (Int) -> Unit,
     onCheckout: () -> Unit,
 ) {
     Row(Modifier.fillMaxSize().padding(16.dp)) {
@@ -66,20 +79,21 @@ internal fun CartScreen(
         }
 
         Column(
-            modifier = Modifier.weight(1f).padding(start = 16.dp),
+            modifier =
+                Modifier.weight(1f)
+                    .padding(start = 16.dp)
+                    .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text("Koszyk", style = MaterialTheme.typography.titleLarge)
-            LazyColumn(Modifier.weight(1f)) {
-                items(state.lines, key = { it.productId }) { line ->
-                    Row(
-                        Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("${line.quantity}×  ${line.productName}", Modifier.weight(1f))
-                        Text(line.lineGross.formatPln())
-                        TextButton(onClick = { onRemove(line.productId) }) { Text("Usuń") }
-                    }
+            state.lines.forEach { line ->
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("${line.quantity}×  ${line.productName}", Modifier.weight(1f))
+                    Text(line.lineGross.formatPln())
+                    TextButton(onClick = { onRemove(line.productId) }) { Text("Usuń") }
                 }
             }
             HorizontalDivider()
@@ -87,16 +101,54 @@ internal fun CartScreen(
                 "Razem: ${state.total.formatPln()}",
                 style = MaterialTheme.typography.titleMedium,
             )
+
+            state.availableAttributes.forEach { attribute ->
+                Text(attribute.name, style = MaterialTheme.typography.labelMedium)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                ) {
+                    attribute.values.forEach { value ->
+                        FilterChip(
+                            selected = value.id in state.selectedAttributeValueIds,
+                            onClick = { onToggleAttributeValue(value.id) },
+                            label = { Text(value.name) },
+                        )
+                    }
+                }
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = state.invoiceRequested, onCheckedChange = onInvoiceRequestedChange)
+                Text("Wystaw fakturę", Modifier.padding(start = 8.dp))
+            }
+            if (state.invoiceRequested) {
+                OutlinedTextField(
+                    value = state.buyerName,
+                    onValueChange = onBuyerNameChange,
+                    label = { Text("Nabywca") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = state.buyerNip,
+                    onValueChange = onBuyerNipChange,
+                    label = { Text("NIP") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
             if (state.error) {
-                Text("Nie udało się wystawić paragonu.", color = MaterialTheme.colorScheme.error)
+                Text("Nie udało się wystawić dokumentu.", color = MaterialTheme.colorScheme.error)
             }
             if (state.submitting) {
                 CircularProgressIndicator()
             } else {
                 PrimaryButton(
-                    text = "Zapłać gotówką",
+                    text = if (state.invoiceRequested) "Wystaw fakturę" else "Wystaw paragon",
                     onClick = onCheckout,
-                    enabled = state.lines.isNotEmpty(),
+                    enabled = state.canCheckout,
                 )
             }
         }

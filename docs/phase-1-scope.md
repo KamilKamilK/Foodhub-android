@@ -13,8 +13,9 @@ offline, bez druku) — walidacja całego kontraktu REST na żywym terminalu".
 | Warstwa sieci: Retrofit/OkHttp, interceptor JWT, refresh na 401, mapowanie błędów | pełna |
 | Logowanie PIN-em (`POST /v1/auth/pos-login`) + bezpieczny zapis tokenów | pełne |
 | Odczyt menu/cennika (cache Room + odświeżanie z `/v1/pos-menus/*`) | pełne |
-| Widok stolików (`/v1/tables`, `/v1/occupied-tables`) | ekran + ViewModel |
-| Checkout online (`orders → lines → finalize → receipts`) | ścieżka gotówkowa, TODO: NIP/faktura, atrybuty sprzedaży |
+| Widok stolików (`/v1/tables`, `/v1/occupied-tables`), occupy/release zamówienia | pełny |
+| Checkout online (`orders → lines → finalize → receipts/invoices`), NIP→faktura, picker atrybutów sprzedaży | pełny |
+| placeId/posId w checkout, rozwiązywane z JWT sesji (`core:auth`) | pełne |
 | Motyw Compose spójny z paletą `foodhub-app` | pełny |
 | Hooki `.githooks/`, CI `android-quality.yml` | pełne |
 
@@ -32,6 +33,10 @@ offline, bez druku) — walidacja całego kontraktu REST na żywym terminalu".
 
 - **D2** — model terminala i jego SDK: `DeviceIdentityProvider` wysyła dziś `ANDROID_ID`
   jako `device.macAddress`; do zmiany na sprzętowy numer seryjny po wyborze urządzenia.
-- **placeId w checkout** — `CartViewModel.checkout()` przyjmuje `placeId` z zewnątrz;
-  docelowo pochodzi z kontekstu POS-a sparowanego urządzenia, wystawionego przez
-  `core:auth` po zalogowaniu. Dziś przekazywany jako pusty string (TODO).
+
+## Zostało do domknięcia Fazy 1
+
+- **Uruchomienie na urządzeniu przeciw żywemu `foodhub-api`** i przejście PIN → stoliki
+  → menu → checkout, z potwierdzeniem każdego endpointu z `docs/rest-contract.md`. Kod
+  kompiluje się i cała bramka jakości jest zielona, ale nikt jeszcze nie uruchomił
+  appki na telefonie/terminalu ani nie zalogował się PIN-em na żywym backendzie.

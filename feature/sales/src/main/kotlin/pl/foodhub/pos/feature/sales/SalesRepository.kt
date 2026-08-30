@@ -3,13 +3,16 @@ package pl.foodhub.pos.feature.sales
 import kotlinx.coroutines.withContext
 import pl.foodhub.pos.core.common.ApiResult
 import pl.foodhub.pos.core.common.DispatcherProvider
+import pl.foodhub.pos.core.common.map
 import pl.foodhub.pos.core.network.api.SalesApi
 import pl.foodhub.pos.core.network.apiCall
-import pl.foodhub.pos.core.network.model.CreateOrderRequestDto
 import pl.foodhub.pos.core.network.model.DocumentLineDto
 import pl.foodhub.pos.core.network.model.FinalizeOrderRequestDto
+import pl.foodhub.pos.core.network.model.IssueInvoiceRequestDto
 import pl.foodhub.pos.core.network.model.IssueReceiptRequestDto
 import pl.foodhub.pos.core.network.model.OrderLineRequestDto
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
 enum class PaymentMethod(val apiValue: String) {
@@ -18,14 +21,29 @@ enum class PaymentMethod(val apiValue: String) {
     OTHER("bank_transfer"),
 }
 
+data class SalesAttributeValue(val id: Int, val name: String)
+
+data class SalesAttribute(val id: Int, val name: String, val values: List<SalesAttributeValue>)
+
+/** Buyer details for an on-the-spot VAT invoice instead of a receipt (NIP required). */
+data class InvoiceDetails(val buyerName: String, val buyerNip: String)
+
+/** How to finalize a sale: payment, receipt vs. invoice, and the section 2.5 attribute picker. */
+data class CheckoutOptions(
+    val paymentMethod: PaymentMethod,
+    val invoiceDetails: InvoiceDetails?,
+    val attributeValueIds: List<Int>,
+)
+
 /**
  * Online checkout against the DDD order/document endpoints, in the same order the web
- * POS runs them (foodhub-app sales/api/pos-runtime.ts):
- * create order -> add lines -> finalize(paymentMethod) -> issue receipt.
+ * POS runs them (foodhub-app sales/api/pos-runtime.ts): add lines to the order opened
+ * when the table was occupied (TablesViewModel) -> finalize(paymentMethod) -> issue a
+ * receipt, or an invoice when the buyer supplied a NIP (section 2.5 attribute picker
+ * feeds attributeValueIds on either document).
  *
  * TODO(Faza 2): wrap this sequence in the offline write-ahead queue (core:sync) so a
  * connectivity drop mid-checkout does not lose the sale.
- * TODO(Faza 1): invoice-on-NIP branch, sales-document attribute picker (section 2.5).
  */
 class SalesRepository
     @Inject
@@ -33,24 +51,32 @@ class SalesRepository
         private val salesApi: SalesApi,
         private val dispatchers: DispatcherProvider,
     ) {
+        suspend fun attributes(): ApiResult<List<SalesAttribute>> =
+            withContext(dispatchers.io) {
+                apiCall { salesApi.salesAttributes() }.map { dtos ->
+                    dtos.map { dto ->
+                        SalesAttribute(
+                            id = dto.id,
+                            name = dto.name,
+                            values = dto.values.map { SalesAttributeValue(it.id, it.name) },
+                        )
+                    }
+                }
+            }
+
         suspend fun checkout(
+            orderId: String,
             placeId: String,
             lines: List<CartLine>,
-            paymentMethod: PaymentMethod,
+            options: CheckoutOptions,
         ): ApiResult<String> =
             withContext(dispatchers.io) {
-                val order =
-                    when (val created = apiCall { salesApi.createOrder(CreateOrderRequestDto(placeId)) }) {
-                        is ApiResult.Success -> created.value
-                        is ApiResult.HttpError -> return@withContext created
-                        is ApiResult.NetworkError -> return@withContext created
-                    }
-
+                val (paymentMethod, invoiceDetails, attributeValueIds) = options
                 lines.forEach { line ->
                     val added =
                         apiCall {
                             salesApi.addLine(
-                                orderId = order.id,
+                                orderId = orderId,
                                 body =
                                     OrderLineRequestDto(
                                         productId = line.productId,
@@ -65,36 +91,56 @@ class SalesRepository
                 }
 
                 val finalized =
-                    apiCall { salesApi.finalize(order.id, FinalizeOrderRequestDto(paymentMethod.apiValue)) }
+                    apiCall { salesApi.finalize(orderId, FinalizeOrderRequestDto(paymentMethod.apiValue)) }
                 if (finalized is ApiResult.HttpError) return@withContext finalized
                 if (finalized is ApiResult.NetworkError) return@withContext finalized
 
-                val receipt =
-                    apiCall {
-                        salesApi.issueReceipt(
-                            IssueReceiptRequestDto(
-                                orderId = order.id,
-                                placeId = placeId,
-                                lines =
-                                    lines.map {
-                                        DocumentLineDto(
-                                            lineId = it.productId,
-                                            productId = it.productId,
-                                            productName = it.productName,
-                                            quantity = it.quantity,
-                                            unitPriceAmount = it.unitPriceGross.minorUnits,
-                                        )
-                                    },
-                                totalGrossAmount = lines.total().minorUnits,
-                                paymentMethod = paymentMethod.apiValue,
-                            ),
-                        )
+                val documentLines = lines.toDocumentLines()
+                val totalGrossAmount = lines.total().minorUnits
+
+                val document =
+                    if (invoiceDetails != null) {
+                        apiCall {
+                            salesApi.issueInvoice(
+                                IssueInvoiceRequestDto(
+                                    orderId = orderId,
+                                    placeId = placeId,
+                                    buyerName = invoiceDetails.buyerName,
+                                    buyerNip = invoiceDetails.buyerNip,
+                                    lines = documentLines,
+                                    totalGrossAmount = totalGrossAmount,
+                                    paymentMethod = paymentMethod.apiValue,
+                                    dueDate = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE),
+                                    attributeValueIds = attributeValueIds,
+                                ),
+                            )
+                        }
+                    } else {
+                        apiCall {
+                            salesApi.issueReceipt(
+                                IssueReceiptRequestDto(
+                                    orderId = orderId,
+                                    placeId = placeId,
+                                    lines = documentLines,
+                                    totalGrossAmount = totalGrossAmount,
+                                    paymentMethod = paymentMethod.apiValue,
+                                    attributeValueIds = attributeValueIds,
+                                ),
+                            )
+                        }
                     }
 
-                when (receipt) {
-                    is ApiResult.Success -> ApiResult.Success(receipt.value.id)
-                    is ApiResult.HttpError -> receipt
-                    is ApiResult.NetworkError -> receipt
-                }
+                document.map { it.id }
+            }
+
+        private fun List<CartLine>.toDocumentLines(): List<DocumentLineDto> =
+            map {
+                DocumentLineDto(
+                    lineId = it.productId,
+                    productId = it.productId,
+                    productName = it.productName,
+                    quantity = it.quantity,
+                    unitPriceAmount = it.unitPriceGross.minorUnits,
+                )
             }
     }

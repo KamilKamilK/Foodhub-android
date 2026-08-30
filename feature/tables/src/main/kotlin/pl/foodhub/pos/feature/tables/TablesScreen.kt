@@ -15,6 +15,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,11 +25,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun TablesRoute(
-    onOpenMenu: () -> Unit,
+    onOpenMenu: (orderId: String, tableId: String) -> Unit,
     viewModel: TablesViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    TablesScreen(state = state, onSelectTable = { onOpenMenu() })
+
+    LaunchedEffect(Unit) { viewModel.load() }
+    LaunchedEffect(Unit) {
+        viewModel.openedTable.collect { session -> onOpenMenu(session.orderId, session.tableId) }
+    }
+
+    TablesScreen(state = state, onSelectTable = viewModel::selectTable)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

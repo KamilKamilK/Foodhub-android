@@ -10,9 +10,11 @@ in the docs repo. This README covers only how to build and what is in the tree t
 ## Status — Faza 1 skeleton
 
 This is the **Faza 1 skeleton**: module structure, DI graph, navigation, the network
-layer wired to the real `foodhub-api` contract, PIN login, read-only menu browsing,
-and an online-only checkout path. Offline queue, printing, Mercure real-time, FCM and
-fiscalisation (Fazy 2–6) are **not** here yet.
+layer wired to the real `foodhub-api` contract, PIN login with the place/POS session
+resolved from the JWT, read-only menu browsing, table occupy/release, and an
+online-only checkout path (receipt or NIP invoice, with the sales-attribute picker).
+Offline queue, printing, Mercure real-time, FCM and fiscalisation (Fazy 2–6) are
+**not** here yet.
 
 `./gradlew ktlintCheck detekt testDebugUnitTest assembleDebug` is green on JDK 17 +
 Android SDK 35; CI runs the same. The screens compile and package into a debug APK but
@@ -58,13 +60,16 @@ core/
   network/                Retrofit/OkHttp, JWT interceptor + refresh authenticator,
                           error mapping, DTOs, Auth/Menu/Sales/Tables APIs
   auth/                   EncryptedSharedPreferences token store, device identity,
-                          AuthRepository (PIN login), AuthTokenProvider impl
+                          AuthRepository (PIN login), AuthTokenProvider impl,
+                          PosSession resolved from the login JWT (place/posId)
   database/               Room menu cache; TransactionQueue interface (Faza 2 stub)
 feature/
   auth/                   PIN login screen + ViewModel
   menu/                   read-only menu browsing (cache + refresh)
-  sales/                  cart + online checkout (orders -> lines -> finalize -> receipt)
-  tables/                 room/table occupancy view
+  sales/                  cart + online checkout (lines -> finalize -> receipt/invoice,
+                          sales-attribute picker), releases the table on success
+  tables/                 room/table occupancy view; opens a table by creating and
+                          occupying an order, or resuming its existing open order
 ```
 
 Dependency rule: `feature:* -> core:* -> (nothing)`. `core:auth -> core:network` is the

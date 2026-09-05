@@ -11,6 +11,7 @@ import pl.foodhub.pos.core.network.model.FinalizeOrderRequestDto
 import pl.foodhub.pos.core.network.model.IssueInvoiceRequestDto
 import pl.foodhub.pos.core.network.model.IssueReceiptRequestDto
 import pl.foodhub.pos.core.network.model.OrderLineRequestDto
+import pl.foodhub.pos.core.printing.PrintableLine
 import pl.foodhub.pos.core.sync.SyncQueue
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -38,13 +39,15 @@ data class CheckoutOptions(
 )
 
 /**
- * Queues the checkout sequence -- add lines, confirm, finalize, then issue a receipt or
- * an invoice when the buyer supplied a NIP -- through [SyncQueue] instead of calling
- * the network directly, so a connectivity drop mid-checkout never loses the sale
+ * Queues the checkout sequence -- add lines, confirm, finalize, issue a receipt or an
+ * invoice when the buyer supplied a NIP, then print the kitchen/bar tickets and the
+ * customer receipt copy -- through [SyncQueue] instead of calling the network
+ * directly, so a connectivity drop mid-checkout never loses the sale
  * (ANDROID_POS_ARCHITECTURE.md section 9 point 2, closing this class's former Faza 2
  * TODO). Every step's id (line/receipt/invoice) is generated here so a queued retry
  * after a dropped response is a backend no-op rather than a duplicate (section 9
- * point 4).
+ * point 4). Printing is queued unconditionally after the document, independent of
+ * receipt vs. invoice (Faza 3) -- the customer copy is the same either way.
  */
 class SalesRepository
     @Inject
@@ -87,6 +90,16 @@ class SalesRepository
             syncQueue.confirmOrder(orderId)
             syncQueue.finalizeOrder(orderId, FinalizeOrderRequestDto(options.paymentMethod.apiValue))
             issueDocument(orderId, placeId, lines, options)
+
+            val printableLines = lines.toPrintableLines()
+            syncQueue.printKitchenTickets(orderId, placeId, printableLines)
+            syncQueue.printReceipt(
+                orderId,
+                placeId,
+                printableLines,
+                lines.total().minorUnits,
+                options.paymentMethod.apiValue,
+            )
         }
 
         private suspend fun issueDocument(
@@ -136,6 +149,16 @@ class SalesRepository
                     productId = it.productId,
                     productName = it.productName,
                     quantity = it.quantity,
+                    unitPriceAmount = it.unitPriceGross.minorUnits,
+                )
+            }
+
+        private fun List<CartLine>.toPrintableLines(): List<PrintableLine> =
+            map {
+                PrintableLine(
+                    productName = it.productName,
+                    quantity = it.quantity,
+                    orderDirectionId = it.orderDirectionId,
                     unitPriceAmount = it.unitPriceGross.minorUnits,
                 )
             }

@@ -10,4 +10,6 @@ enum class SyncOperationType {
     FINALIZE_ORDER,
     ISSUE_RECEIPT,
     ISSUE_INVOICE,
+    PRINT_KITCHEN_TICKETS,
+    PRINT_RECEIPT,
 }

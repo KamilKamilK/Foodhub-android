@@ -28,4 +28,5 @@ data class PosMenuItemDto(
     @SerialName("position") val position: Int = 0,
     @SerialName("unitPriceGross") val unitPriceGross: Long = 0,
     @SerialName("taxRateValue") val taxRateValue: Double = 0.0,
+    @SerialName("orderDirectionId") val orderDirectionId: Long? = null,
 )

@@ -58,6 +58,18 @@ class SalesRepositoryTest {
                 )
             }
             coVerify { syncQueue.issueReceipt(withArg { assertEquals(listOf(3), it.attributeValueIds) }) }
+            coVerify {
+                syncQueue.printKitchenTickets(
+                    "o1",
+                    "place-1",
+                    withArg { printLines ->
+                        assertEquals(1, printLines.size)
+                        assertEquals("Pizza", printLines[0].productName)
+                        assertEquals(2, printLines[0].quantity)
+                    },
+                )
+            }
+            coVerify { syncQueue.printReceipt("o1", "place-1", any(), totalGrossAmount = 5000, paymentMethod = "cash") }
             // Regression: the order must be confirmed (draft -> confirmed) before finalize is
             // queued, or the backend rejects finalize with a draft-order 422 once synced.
             coVerifyOrder {
@@ -65,6 +77,8 @@ class SalesRepositoryTest {
                 syncQueue.confirmOrder("o1")
                 syncQueue.finalizeOrder("o1", FinalizeOrderRequestDto("cash"))
                 syncQueue.issueReceipt(any())
+                syncQueue.printKitchenTickets(any(), any(), any())
+                syncQueue.printReceipt(any(), any(), any(), any(), any())
             }
         }
 

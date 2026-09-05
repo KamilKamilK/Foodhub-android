@@ -32,6 +32,7 @@ data class MenuItemEntity(
     val position: Int,
     val unitPriceGrossMinor: Long,
     val taxRateValue: Double,
+    val orderDirectionId: Long?,
 )
 
 @Dao

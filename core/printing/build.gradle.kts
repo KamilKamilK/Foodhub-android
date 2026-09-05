@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "pl.foodhub.pos.core.sync"
+    namespace = "pl.foodhub.pos.core.printing"
     compileSdk = 35
     defaultConfig { minSdk = 26 }
     compileOptions {
@@ -22,16 +22,10 @@ kotlin {
 
 dependencies {
     implementation(projects.core.common)
-    implementation(projects.core.database)
     implementation(projects.core.network)
-    implementation(projects.core.printing)
 
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
-
-    implementation(libs.androidx.work.runtime.ktx)
-    implementation(libs.androidx.hilt.work)
-    ksp(libs.androidx.hilt.compiler)
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
@@ -39,9 +33,4 @@ dependencies {
     testImplementation(libs.junit4)
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
-    // Needed only to build a real retrofit2.HttpException with a chosen status code in
-    // SyncProcessorTest -- ApiResult itself (what SyncProcessor actually branches on)
-    // is retrofit-free, so main code never needs these.
-    testImplementation(libs.retrofit.core)
-    testImplementation(libs.okhttp.core)
 }

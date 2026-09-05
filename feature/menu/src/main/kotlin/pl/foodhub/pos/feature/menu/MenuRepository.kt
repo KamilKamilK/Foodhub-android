@@ -77,6 +77,7 @@ class MenuRepository
                                             position = it.position,
                                             unitPriceGrossMinor = it.unitPriceGross,
                                             taxRateValue = it.taxRateValue,
+                                            orderDirectionId = it.orderDirectionId,
                                         )
                                     },
                             )

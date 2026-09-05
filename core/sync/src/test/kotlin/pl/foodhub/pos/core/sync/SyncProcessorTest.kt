@@ -13,6 +13,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import pl.foodhub.pos.core.common.ApiResult
 import pl.foodhub.pos.core.common.DispatcherProvider
 import pl.foodhub.pos.core.database.TransactionQueue
 import pl.foodhub.pos.core.network.api.SalesApi
@@ -20,6 +21,8 @@ import pl.foodhub.pos.core.network.api.TablesApi
 import pl.foodhub.pos.core.network.model.FinalizeOrderRequestDto
 import pl.foodhub.pos.core.network.model.OccupyTableResponseDto
 import pl.foodhub.pos.core.network.model.OrderDto
+import pl.foodhub.pos.core.printing.PrintRouter
+import pl.foodhub.pos.core.printing.PrintableLine
 import retrofit2.HttpException
 import retrofit2.Response
 import java.io.IOException
@@ -46,7 +49,8 @@ class SyncProcessorTest {
     private val queue = mockk<TransactionQueue>()
     private val salesApi = mockk<SalesApi>()
     private val tablesApi = mockk<TablesApi>()
-    private val processor = SyncProcessor(queue, salesApi, tablesApi, json, TestDispatcherProvider())
+    private val printRouter = mockk<PrintRouter>()
+    private val processor = SyncProcessor(queue, salesApi, tablesApi, printRouter, json, TestDispatcherProvider())
 
     private fun op(
         id: Long,
@@ -173,6 +177,40 @@ class SyncProcessorTest {
             assertEquals(SyncRunResult.Drained, result)
             coVerify { queue.markSynced(1) }
             coVerify(exactly = 0) { queue.markFailed(any(), any()) }
+        }
+
+    @Test
+    fun `print-kitchen-tickets dispatches through PrintRouter and marks synced on success`() =
+        runTest {
+            val lines = listOf(PrintableLine("Pizza", 2, orderDirectionId = 1L, unitPriceAmount = 2500))
+            val payload = json.encodeToString(PrintKitchenTicketsPayload("place-1", "o1", lines))
+            val op1 = op(1, SyncOperationType.PRINT_KITCHEN_TICKETS, payload)
+            coEvery { queue.nextPending() } returnsMany listOf(op1, null)
+            coEvery { printRouter.printKitchenTickets("place-1", "o1", lines) } returns ApiResult.Success(Unit)
+            coEvery { queue.markSynced(1) } returns Unit
+
+            val result = processor.run()
+
+            assertEquals(SyncRunResult.Drained, result)
+            coVerify { queue.markSynced(1) }
+        }
+
+    @Test
+    fun `a failed print does not retry the whole queue -- it is marked failed and moved past`() =
+        runTest {
+            val lines = listOf(PrintableLine("Pizza", 2, orderDirectionId = 1L, unitPriceAmount = 2500))
+            val payload = json.encodeToString(PrintReceiptPayload("place-1", "o1", lines, 5000, "cash"))
+            val op1 = op(1, SyncOperationType.PRINT_RECEIPT, payload)
+            coEvery { queue.nextPending() } returnsMany listOf(op1, null)
+            coEvery { printRouter.printReceipt("place-1", "o1", lines, 5000, "cash") } returns
+                ApiResult.HttpError(400, "PRINT_FAILED", null)
+            coEvery { queue.markFailed(1, any()) } returns Unit
+
+            val result = processor.run()
+
+            assertEquals(SyncRunResult.Drained, result)
+            coVerify { queue.markFailed(1, any()) }
+            coVerify(exactly = 0) { queue.markSynced(any()) }
         }
 
     @Test

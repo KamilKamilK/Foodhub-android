@@ -11,6 +11,7 @@ import pl.foodhub.pos.core.network.apiCall
 import pl.foodhub.pos.core.network.model.CreateOrderRequestDto
 import pl.foodhub.pos.core.network.model.IssueInvoiceRequestDto
 import pl.foodhub.pos.core.network.model.IssueReceiptRequestDto
+import pl.foodhub.pos.core.printing.PrintRouter
 import javax.inject.Inject
 
 private const val HTTP_UNPROCESSABLE_ENTITY = 422
@@ -37,6 +38,7 @@ class SyncProcessor
         private val queue: TransactionQueue,
         private val salesApi: SalesApi,
         private val tablesApi: TablesApi,
+        private val printRouter: PrintRouter,
         private val json: Json,
         private val dispatchers: DispatcherProvider,
     ) {
@@ -104,6 +106,14 @@ class SyncProcessor
                 SyncOperationType.ISSUE_INVOICE -> {
                     val p = json.decodeFromString<IssueInvoiceRequestDto>(payloadJson)
                     apiCall { salesApi.issueInvoice(p) }
+                }
+                SyncOperationType.PRINT_KITCHEN_TICKETS -> {
+                    val p = json.decodeFromString<PrintKitchenTicketsPayload>(payloadJson)
+                    printRouter.printKitchenTickets(p.placeId, p.orderId, p.lines)
+                }
+                SyncOperationType.PRINT_RECEIPT -> {
+                    val p = json.decodeFromString<PrintReceiptPayload>(payloadJson)
+                    printRouter.printReceipt(p.placeId, p.orderId, p.lines, p.totalGrossAmount, p.paymentMethod)
                 }
             }
 

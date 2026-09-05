@@ -10,6 +10,7 @@ import org.junit.Test
 import pl.foodhub.pos.core.database.TransactionQueue
 import pl.foodhub.pos.core.network.model.FinalizeOrderRequestDto
 import pl.foodhub.pos.core.network.model.IssueReceiptRequestDto
+import pl.foodhub.pos.core.printing.PrintableLine
 
 class SyncQueueTest {
     private val transactionQueue = mockk<TransactionQueue>(relaxed = true)
@@ -76,6 +77,46 @@ class SyncQueueTest {
                     SyncOperationType.ISSUE_RECEIPT.name,
                     withArg { payload ->
                         assertEquals(request, json.decodeFromString<IssueReceiptRequestDto>(payload))
+                    },
+                )
+            }
+        }
+
+    @Test
+    fun `printKitchenTickets encodes placeId, orderId and lines together`() =
+        runTest {
+            val lines = listOf(PrintableLine("Pizza", 2, orderDirectionId = 1L, unitPriceAmount = 2500))
+
+            syncQueue.printKitchenTickets("o1", "place-1", lines)
+
+            coVerify {
+                transactionQueue.enqueue(
+                    SyncOperationType.PRINT_KITCHEN_TICKETS.name,
+                    withArg { payload ->
+                        val decoded = json.decodeFromString<PrintKitchenTicketsPayload>(payload)
+                        assertEquals("place-1", decoded.placeId)
+                        assertEquals("o1", decoded.orderId)
+                        assertEquals(lines, decoded.lines)
+                    },
+                )
+            }
+        }
+
+    @Test
+    fun `printReceipt encodes total and payment method alongside the lines`() =
+        runTest {
+            val lines = listOf(PrintableLine("Cola", 1, orderDirectionId = null, unitPriceAmount = 500))
+
+            syncQueue.printReceipt("o1", "place-1", lines, totalGrossAmount = 500, paymentMethod = "card")
+
+            coVerify {
+                transactionQueue.enqueue(
+                    SyncOperationType.PRINT_RECEIPT.name,
+                    withArg { payload ->
+                        val decoded = json.decodeFromString<PrintReceiptPayload>(payload)
+                        assertEquals(500L, decoded.totalGrossAmount)
+                        assertEquals("card", decoded.paymentMethod)
+                        assertEquals(lines, decoded.lines)
                     },
                 )
             }

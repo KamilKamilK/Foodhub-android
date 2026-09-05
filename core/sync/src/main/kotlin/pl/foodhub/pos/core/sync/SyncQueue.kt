@@ -8,6 +8,7 @@ import pl.foodhub.pos.core.network.model.FinalizeOrderRequestDto
 import pl.foodhub.pos.core.network.model.IssueInvoiceRequestDto
 import pl.foodhub.pos.core.network.model.IssueReceiptRequestDto
 import pl.foodhub.pos.core.network.model.OrderLineRequestDto
+import pl.foodhub.pos.core.printing.PrintableLine
 import javax.inject.Inject
 
 /**
@@ -16,7 +17,12 @@ import javax.inject.Inject
  * operation is durably queued; the actual network call happens later, in
  * [SyncWorker], whenever connectivity allows (ANDROID_POS_ARCHITECTURE.md section 9
  * point 2: "UI pokazuje sukces natychmiast").
+ *
+ * One small delegating method per [SyncOperationType] by design -- this class is
+ * deliberately the single write-path entry point for the whole queue, so splitting it
+ * to dodge detekt's function-count threshold would fragment that guarantee.
  */
+@Suppress("TooManyFunctions")
 class SyncQueue
     @Inject
     constructor(
@@ -58,6 +64,23 @@ class SyncQueue
         suspend fun issueReceipt(request: IssueReceiptRequestDto) = enqueue(SyncOperationType.ISSUE_RECEIPT, request)
 
         suspend fun issueInvoice(request: IssueInvoiceRequestDto) = enqueue(SyncOperationType.ISSUE_INVOICE, request)
+
+        suspend fun printKitchenTickets(
+            orderId: String,
+            placeId: String,
+            lines: List<PrintableLine>,
+        ) = enqueue(SyncOperationType.PRINT_KITCHEN_TICKETS, PrintKitchenTicketsPayload(placeId, orderId, lines))
+
+        suspend fun printReceipt(
+            orderId: String,
+            placeId: String,
+            lines: List<PrintableLine>,
+            totalGrossAmount: Long,
+            paymentMethod: String,
+        ) = enqueue(
+            SyncOperationType.PRINT_RECEIPT,
+            PrintReceiptPayload(placeId, orderId, lines, totalGrossAmount, paymentMethod),
+        )
 
         private suspend inline fun <reified T> enqueue(
             type: SyncOperationType,

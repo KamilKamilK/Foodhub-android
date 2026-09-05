@@ -7,6 +7,7 @@ data class CartLine(
     val productName: String,
     val unitPriceGross: Money,
     val quantity: Int,
+    val orderDirectionId: Long? = null,
 ) {
     val lineGross: Money get() = unitPriceGross * quantity
 }

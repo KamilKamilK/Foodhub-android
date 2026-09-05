@@ -23,6 +23,7 @@ data class PickerProduct(
     val productId: String,
     val name: String,
     val unitPriceGross: Money,
+    val orderDirectionId: Long? = null,
 )
 
 data class CartUiState(
@@ -70,7 +71,14 @@ class CartViewModel
                 .map { items ->
                     items
                         .filter { it.productId.isNotBlank() }
-                        .map { PickerProduct(it.productId, it.productName, Money(it.unitPriceGrossMinor)) }
+                        .map {
+                            PickerProduct(
+                                it.productId,
+                                it.productName,
+                                Money(it.unitPriceGrossMinor),
+                                it.orderDirectionId,
+                            )
+                        }
                 }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -93,7 +101,13 @@ class CartViewModel
                         }
                     } else {
                         current.lines +
-                            CartLine(product.productId, product.name, product.unitPriceGross, quantity = 1)
+                            CartLine(
+                                product.productId,
+                                product.name,
+                                product.unitPriceGross,
+                                quantity = 1,
+                                orderDirectionId = product.orderDirectionId,
+                            )
                     }
                 current.copy(lines = lines, error = false)
             }

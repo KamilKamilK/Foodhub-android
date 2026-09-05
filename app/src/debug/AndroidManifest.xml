@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <application android:networkSecurityConfig="@xml/network_security_config" />
+    <application android:networkSecurityConfig="@xml/network_security_config">
+
+        <!-- Instrumented tests set Compose content on this directly instead of
+             launching MainActivity; it must live in a debug source set of the app
+             itself (not androidTest) so the launched component resolves in the same
+             process the instrumentation is attached to. -->
+        <activity
+            android:name=".testing.HiltTestActivity"
+            android:exported="false" />
+    </application>
 
 </manifest>

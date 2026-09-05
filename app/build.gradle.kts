@@ -16,7 +16,7 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "pl.foodhub.pos.HiltTestRunner"
     }
 
     buildFeatures { compose = true }
@@ -74,4 +74,20 @@ dependencies {
 
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.hilt.work)
+
+    androidTestImplementation(libs.hilt.android.testing)
+    kspAndroidTest(libs.hilt.compiler)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.okhttp.mockwebserver)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
+    // core:network's Retrofit/OkHttp/kotlinx-serialization stack is `implementation`-only
+    // there, so TestNetworkModule (which rebuilds that stack against a MockWebServer)
+    // needs its own copy of the same libraries to compile.
+    androidTestImplementation(libs.retrofit.core)
+    androidTestImplementation(libs.retrofit.kotlinx.serialization)
+    androidTestImplementation(libs.okhttp.core)
+    androidTestImplementation(libs.kotlinx.serialization.json)
 }

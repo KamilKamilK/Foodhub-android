@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Debug build only: local Docker foodhub-api instead of the placeholder
+         deployment host in core/network's main config.xml. 10.0.2.2 is the
+         Android emulator's alias for the host machine's loopback interface. -->
+    <string name="foodhub_api_base_url" translatable="false">http://10.0.2.2:8000/</string>
+</resources>

@@ -11,6 +11,7 @@ import pl.foodhub.pos.core.network.model.FinalizeOrderRequestDto
 import pl.foodhub.pos.core.network.model.IssueInvoiceRequestDto
 import pl.foodhub.pos.core.network.model.IssueReceiptRequestDto
 import pl.foodhub.pos.core.network.model.OrderLineRequestDto
+import pl.foodhub.pos.core.network.model.SalesDocumentDto
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
@@ -71,67 +72,86 @@ class SalesRepository
             options: CheckoutOptions,
         ): ApiResult<String> =
             withContext(dispatchers.io) {
-                val (paymentMethod, invoiceDetails, attributeValueIds) = options
-                lines.forEach { line ->
-                    val added =
-                        apiCall {
-                            salesApi.addLine(
-                                orderId = orderId,
-                                body =
-                                    OrderLineRequestDto(
-                                        productId = line.productId,
-                                        productName = line.productName,
-                                        quantity = line.quantity,
-                                        unitPriceAmount = line.unitPriceGross.minorUnits,
-                                    ),
-                            )
-                        }
-                    if (added is ApiResult.HttpError) return@withContext added
-                    if (added is ApiResult.NetworkError) return@withContext added
-                }
+                addLines(orderId, lines)?.let { return@withContext it }
+
+                val confirmed = apiCall { salesApi.confirm(orderId) }
+                if (confirmed is ApiResult.HttpError) return@withContext confirmed
+                if (confirmed is ApiResult.NetworkError) return@withContext confirmed
 
                 val finalized =
-                    apiCall { salesApi.finalize(orderId, FinalizeOrderRequestDto(paymentMethod.apiValue)) }
+                    apiCall { salesApi.finalize(orderId, FinalizeOrderRequestDto(options.paymentMethod.apiValue)) }
                 if (finalized is ApiResult.HttpError) return@withContext finalized
                 if (finalized is ApiResult.NetworkError) return@withContext finalized
 
-                val documentLines = lines.toDocumentLines()
-                val totalGrossAmount = lines.total().minorUnits
-
-                val document =
-                    if (invoiceDetails != null) {
-                        apiCall {
-                            salesApi.issueInvoice(
-                                IssueInvoiceRequestDto(
-                                    orderId = orderId,
-                                    placeId = placeId,
-                                    buyerName = invoiceDetails.buyerName,
-                                    buyerNip = invoiceDetails.buyerNip,
-                                    lines = documentLines,
-                                    totalGrossAmount = totalGrossAmount,
-                                    paymentMethod = paymentMethod.apiValue,
-                                    dueDate = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE),
-                                    attributeValueIds = attributeValueIds,
-                                ),
-                            )
-                        }
-                    } else {
-                        apiCall {
-                            salesApi.issueReceipt(
-                                IssueReceiptRequestDto(
-                                    orderId = orderId,
-                                    placeId = placeId,
-                                    lines = documentLines,
-                                    totalGrossAmount = totalGrossAmount,
-                                    paymentMethod = paymentMethod.apiValue,
-                                    attributeValueIds = attributeValueIds,
-                                ),
-                            )
-                        }
-                    }
-
-                document.map { it.id }
+                issueDocument(orderId, placeId, lines, options).map { it.id }
             }
+
+        /** Adds every cart line to the draft order; returns the first failure, or null once all succeed. */
+        private suspend fun addLines(
+            orderId: String,
+            lines: List<CartLine>,
+        ): ApiResult<String>? {
+            lines.forEach { line ->
+                val added =
+                    apiCall {
+                        salesApi.addLine(
+                            orderId = orderId,
+                            body =
+                                OrderLineRequestDto(
+                                    productId = line.productId,
+                                    productName = line.productName,
+                                    quantity = line.quantity,
+                                    unitPriceAmount = line.unitPriceGross.minorUnits,
+                                ),
+                        )
+                    }
+                if (added is ApiResult.HttpError) return added
+                if (added is ApiResult.NetworkError) return added
+            }
+            return null
+        }
+
+        private suspend fun issueDocument(
+            orderId: String,
+            placeId: String,
+            lines: List<CartLine>,
+            options: CheckoutOptions,
+        ): ApiResult<SalesDocumentDto> {
+            val (paymentMethod, invoiceDetails, attributeValueIds) = options
+            val documentLines = lines.toDocumentLines()
+            val totalGrossAmount = lines.total().minorUnits
+
+            return if (invoiceDetails != null) {
+                apiCall {
+                    salesApi.issueInvoice(
+                        IssueInvoiceRequestDto(
+                            orderId = orderId,
+                            placeId = placeId,
+                            buyerName = invoiceDetails.buyerName,
+                            buyerNip = invoiceDetails.buyerNip,
+                            lines = documentLines,
+                            totalGrossAmount = totalGrossAmount,
+                            paymentMethod = paymentMethod.apiValue,
+                            dueDate = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE),
+                            attributeValueIds = attributeValueIds,
+                        ),
+                    )
+                }
+            } else {
+                apiCall {
+                    salesApi.issueReceipt(
+                        IssueReceiptRequestDto(
+                            orderId = orderId,
+                            placeId = placeId,
+                            lines = documentLines,
+                            totalGrossAmount = totalGrossAmount,
+                            paymentMethod = paymentMethod.apiValue,
+                            attributeValueIds = attributeValueIds,
+                        ),
+                    )
+                }
+            }
+        }
 
         private fun List<CartLine>.toDocumentLines(): List<DocumentLineDto> =
             map {

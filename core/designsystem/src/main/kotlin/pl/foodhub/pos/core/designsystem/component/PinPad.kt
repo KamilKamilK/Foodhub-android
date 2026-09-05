@@ -1,13 +1,12 @@
 package pl.foodhub.pos.core.designsystem.component
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -53,29 +52,34 @@ fun PinPad(
         }
     }
 
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
+    Column(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        items(keys) { key ->
-            when (key) {
-                "" -> Text("")
-                "⌫" ->
-                    ElevatedButton(
-                        onClick = { if (pin.isNotEmpty()) onPinChange(pin.dropLast(1)) },
-                        modifier = Modifier.aspectRatio(1.6f),
-                    ) {
-                        Text("⌫", style = MaterialTheme.typography.headlineSmall)
+        keys.chunked(3).forEach { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                row.forEach { key ->
+                    when (key) {
+                        "" -> Spacer(Modifier.weight(1f))
+                        "⌫" ->
+                            ElevatedButton(
+                                onClick = { if (pin.isNotEmpty()) onPinChange(pin.dropLast(1)) },
+                                modifier = Modifier.weight(1f).aspectRatio(1.6f),
+                            ) {
+                                Text("⌫", style = MaterialTheme.typography.headlineSmall)
+                            }
+                        else ->
+                            ElevatedButton(
+                                onClick = { if (pin.length < maxLength) onPinChange(pin + key) },
+                                modifier = Modifier.weight(1f).aspectRatio(1.6f),
+                            ) {
+                                Text(key, style = MaterialTheme.typography.headlineSmall)
+                            }
                     }
-                else ->
-                    ElevatedButton(
-                        onClick = { if (pin.length < maxLength) onPinChange(pin + key) },
-                        modifier = Modifier.aspectRatio(1.6f),
-                    ) {
-                        Text(key, style = MaterialTheme.typography.headlineSmall)
-                    }
+                }
             }
         }
     }

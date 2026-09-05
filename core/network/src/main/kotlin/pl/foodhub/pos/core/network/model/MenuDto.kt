@@ -22,7 +22,7 @@ data class PosMenuGroupDto(
 data class PosMenuItemDto(
     @SerialName("id") val id: Long,
     @SerialName("groupId") val groupId: Long? = null,
-    @SerialName("productId") val productId: String = "",
+    @SerialName("productId") val productId: Long? = null,
     @SerialName("productName") val productName: String = "",
     @SerialName("productType") val productType: String = "",
     @SerialName("position") val position: Int = 0,

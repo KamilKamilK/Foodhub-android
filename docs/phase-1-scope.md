@@ -14,7 +14,7 @@ offline, bez druku) — walidacja całego kontraktu REST na żywym terminalu".
 | Logowanie PIN-em (`POST /v1/auth/pos-login`) + bezpieczny zapis tokenów | pełne |
 | Odczyt menu/cennika (cache Room + odświeżanie z `/v1/pos-menus/*`) | pełne |
 | Widok stolików (`/v1/tables`, `/v1/occupied-tables`), occupy/release zamówienia | pełny |
-| Checkout online (`orders → lines → finalize → receipts/invoices`), NIP→faktura, picker atrybutów sprzedaży | pełny |
+| Checkout online (`orders → lines → confirm → finalize → receipts/invoices`), NIP→faktura, picker atrybutów sprzedaży | pełny |
 | placeId/posId w checkout, rozwiązywane z JWT sesji (`core:auth`) | pełne |
 | Motyw Compose spójny z paletą `foodhub-app` | pełny |
 | Hooki `.githooks/`, CI `android-quality.yml` | pełne |
@@ -33,10 +33,19 @@ offline, bez druku) — walidacja całego kontraktu REST na żywym terminalu".
 
 - **D2** — model terminala i jego SDK: `DeviceIdentityProvider` wysyła dziś `ANDROID_ID`
   jako `device.macAddress`; do zmiany na sprzętowy numer seryjny po wyborze urządzenia.
+- Ekran logowania PIN-em nie ma pola na numer seryjny POS-a — pierwsze logowanie
+  nowego urządzenia w lokalu z więcej niż jednym wolnym POS-em (parowanie
+  jednoznaczne tylko przy dokładnie jednym, patrz `ANDROID_POS_ARCHITECTURE.md` 2.1
+  pkt 3) nie ma dziś żadnej ścieżki w UI — sparowanie wymaga dziś ręcznego wywołania
+  `POST /v1/auth/pos-login` z `posId` (UUID) albo `PUT /v1/devices/{mac}/pair-with-pos`
+  przez administratora. Do zaadresowania razem z D2 (wybór modelu terminala).
 
-## Zostało do domknięcia Fazy 1
+## Faza 1 — zamknięta (2026-09-05)
 
-- **Uruchomienie na urządzeniu przeciw żywemu `foodhub-api`** i przejście PIN → stoliki
-  → menu → checkout, z potwierdzeniem każdego endpointu z `docs/rest-contract.md`. Kod
-  kompiluje się i cała bramka jakości jest zielona, ale nikt jeszcze nie uruchomił
-  appki na telefonie/terminalu ani nie zalogował się PIN-em na żywym backendzie.
+Uruchomiona na emulatorze (Pixel 6, API 35) przeciw żywemu `foodhub-api`: PIN →
+stoliki → menu → checkout (paragon i faktura) przechodzi end-to-end, z
+potwierdzeniem każdego endpointu z `docs/rest-contract.md`. Weryfikacja odsłoniła i
+naprawiła kilka realnych błędów po obu stronach (kontrakt menu bez nazwy/ceny,
+crash klawiatury PIN w layoucie landscape, brakujący krok `confirm` w checkout,
+brakujący fallback waluty linii przy wystawianiu dokumentu) — pełna lista w
+`ANDROID_POS_ARCHITECTURE.md` sekcja 14.

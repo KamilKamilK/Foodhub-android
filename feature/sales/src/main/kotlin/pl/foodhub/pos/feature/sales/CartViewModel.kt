@@ -69,7 +69,9 @@ class CartViewModel
         val availableProducts =
             menuCacheDao.observeItems()
                 .map { items ->
-                    items.map { PickerProduct(it.productId, it.productName, Money(it.unitPriceGrossMinor)) }
+                    items
+                        .filter { it.productId.isNotBlank() }
+                        .map { PickerProduct(it.productId, it.productName, Money(it.unitPriceGrossMinor)) }
                 }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 

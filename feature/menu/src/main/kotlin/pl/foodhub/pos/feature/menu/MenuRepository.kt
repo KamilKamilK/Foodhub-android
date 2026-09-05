@@ -71,7 +71,7 @@ class MenuRepository
                                         MenuItemEntity(
                                             id = it.id,
                                             groupId = it.groupId,
-                                            productId = it.productId,
+                                            productId = it.productId?.toString() ?: "",
                                             productName = it.productName,
                                             productType = it.productType,
                                             position = it.position,

@@ -39,6 +39,7 @@ class SalesRepositoryTest {
     fun `issues a receipt when no invoice details are supplied`() =
         runTest {
             coEvery { salesApi.addLine(any(), any()) } returns OrderDto(id = "o1")
+            coEvery { salesApi.confirm("o1") } returns OrderDto(id = "o1")
             coEvery { salesApi.finalize("o1", FinalizeOrderRequestDto("cash")) } returns OrderDto(id = "o1")
             coEvery { salesApi.issueReceipt(any()) } returns SalesDocumentDto(id = "r1")
 
@@ -58,12 +59,16 @@ class SalesRepositoryTest {
                     OrderLineRequestDto(productId = "p1", productName = "Pizza", quantity = 2, unitPriceAmount = 2500),
                 )
             }
+            // Regression: the order must be confirmed (draft -> confirmed) before finalize is
+            // called, or the backend rejects finalize with a draft-order 422.
+            coVerify { salesApi.confirm("o1") }
         }
 
     @Test
     fun `issues an invoice with the buyer NIP when invoice details are supplied`() =
         runTest {
             coEvery { salesApi.addLine(any(), any()) } returns OrderDto(id = "o1")
+            coEvery { salesApi.confirm(any()) } returns OrderDto(id = "o1")
             coEvery { salesApi.finalize(any(), any()) } returns OrderDto(id = "o1")
             coEvery { salesApi.issueInvoice(any()) } returns SalesDocumentDto(id = "i1")
 
@@ -97,6 +102,21 @@ class SalesRepositoryTest {
     fun `stops before finalizing when adding a line fails`() =
         runTest {
             coEvery { salesApi.addLine(any(), any()) } throws IOException("offline")
+
+            val noInvoice = CheckoutOptions(PaymentMethod.CASH, invoiceDetails = null, attributeValueIds = emptyList())
+            val result =
+                repository.checkout(orderId = "o1", placeId = "place-1", lines = lines, options = noInvoice)
+
+            assertTrue(result is ApiResult.NetworkError)
+            coVerify(exactly = 0) { salesApi.finalize(any(), any()) }
+            coVerify(exactly = 0) { salesApi.issueReceipt(any()) }
+        }
+
+    @Test
+    fun `stops before finalizing when confirm fails`() =
+        runTest {
+            coEvery { salesApi.addLine(any(), any()) } returns OrderDto(id = "o1")
+            coEvery { salesApi.confirm(any()) } throws IOException("offline")
 
             val noInvoice = CheckoutOptions(PaymentMethod.CASH, invoiceDetails = null, attributeValueIds = emptyList())
             val result =

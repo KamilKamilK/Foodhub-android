@@ -43,8 +43,8 @@ fun CartRoute(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val products by viewModel.availableProducts.collectAsStateWithLifecycle()
 
-    LaunchedEffect(state.completedDocumentId) {
-        if (state.completedDocumentId != null) onCheckoutComplete()
+    LaunchedEffect(state.queuedForSync) {
+        if (state.queuedForSync) onCheckoutComplete()
     }
 
     CartScreen(
@@ -178,7 +178,7 @@ internal fun CartScreen(
             }
 
             if (state.error) {
-                Text("Nie udało się wystawić dokumentu.", color = MaterialTheme.colorScheme.error)
+                Text("Brak sesji terminala — zaloguj się ponownie.", color = MaterialTheme.colorScheme.error)
             }
             if (state.submitting) {
                 CircularProgressIndicator()

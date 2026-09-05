@@ -51,6 +51,7 @@ dependencies {
     implementation(projects.core.network)
     implementation(projects.core.auth)
     implementation(projects.core.database)
+    implementation(projects.core.sync)
     implementation(projects.feature.auth)
     implementation(projects.feature.menu)
     implementation(projects.feature.sales)
@@ -70,4 +71,7 @@ dependencies {
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
 }

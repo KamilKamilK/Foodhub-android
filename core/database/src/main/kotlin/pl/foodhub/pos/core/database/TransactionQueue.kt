@@ -1,22 +1,70 @@
 package pl.foodhub.pos.core.database
 
+import kotlinx.coroutines.flow.Flow
+import javax.inject.Inject
+
 /**
- * Faza 2 placeholder. The offline write-ahead queue -- every sale/payment/table
- * change written locally with a client UUID and a `pending` status, drained FIFO by
- * WorkManager when connectivity and a valid JWT are back (ANDROID_POS_ARCHITECTURE.md
- * section 9 point 2). Faza 1 is online-only, so nothing implements this yet.
+ * The offline write-ahead queue -- every sale/payment/table change is written locally
+ * with a `type` + JSON payload and drained FIFO by `core:sync`'s worker when
+ * connectivity is back (ANDROID_POS_ARCHITECTURE.md section 9 point 2). This interface
+ * only knows about storage; it never interprets `type`/`payloadJson`.
  */
 interface TransactionQueue {
-    suspend fun enqueue(operation: PendingOperation)
+    suspend fun enqueue(
+        type: String,
+        payloadJson: String,
+    )
 
-    suspend fun pending(): List<PendingOperation>
+    /** The oldest still-pending operation, or null once the queue is drained. */
+    suspend fun nextPending(): PendingOperation?
 
-    suspend fun markSynced(clientId: String)
+    suspend fun markSynced(id: Long)
+
+    suspend fun markFailed(
+        id: Long,
+        error: String,
+    )
+
+    fun pendingCount(): Flow<Int>
+
+    fun failedCount(): Flow<Int>
 
     data class PendingOperation(
-        val clientId: String,
+        val id: Long,
         val type: String,
         val payloadJson: String,
-        val createdAtEpochMs: Long,
     )
 }
+
+class RoomTransactionQueue
+    @Inject
+    constructor(
+        private val dao: SyncOperationDao,
+    ) : TransactionQueue {
+        override suspend fun enqueue(
+            type: String,
+            payloadJson: String,
+        ) {
+            dao.insert(
+                SyncOperationEntity(
+                    type = type,
+                    payloadJson = payloadJson,
+                    createdAtEpochMs = System.currentTimeMillis(),
+                ),
+            )
+        }
+
+        override suspend fun nextPending(): TransactionQueue.PendingOperation? =
+            dao.nextPending()?.let { TransactionQueue.PendingOperation(it.id, it.type, it.payloadJson) }
+
+        override suspend fun markSynced(id: Long) = dao.delete(id)
+
+        override suspend fun markFailed(
+            id: Long,
+            error: String,
+        ) = dao.markFailed(id, error)
+
+        override fun pendingCount(): Flow<Int> = dao.observePendingCount()
+
+        override fun failedCount(): Flow<Int> = dao.observeFailedCount()
+    }

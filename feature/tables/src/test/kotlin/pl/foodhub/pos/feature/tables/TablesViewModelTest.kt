@@ -5,6 +5,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
@@ -21,18 +22,16 @@ import org.junit.Before
 import org.junit.Test
 import pl.foodhub.pos.core.auth.AuthRepository
 import pl.foodhub.pos.core.auth.PosSession
-import pl.foodhub.pos.core.network.api.SalesApi
 import pl.foodhub.pos.core.network.api.TablesApi
-import pl.foodhub.pos.core.network.model.CreateOrderRequestDto
 import pl.foodhub.pos.core.network.model.OccupiedTableDto
-import pl.foodhub.pos.core.network.model.OrderDto
 import pl.foodhub.pos.core.network.model.TableDto
+import pl.foodhub.pos.core.sync.SyncQueue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TablesViewModelTest {
     private val tablesApi = mockk<TablesApi>()
-    private val salesApi = mockk<SalesApi>()
     private val authRepository = mockk<AuthRepository>()
+    private val syncQueue = mockk<SyncQueue>(relaxed = true)
 
     @Before
     fun setUp() {
@@ -46,7 +45,7 @@ class TablesViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun viewModel() = TablesViewModel(tablesApi, salesApi, authRepository)
+    private fun viewModel() = TablesViewModel(tablesApi, authRepository, syncQueue)
 
     @Test
     fun `load populates tables and marks the occupied ones`() =
@@ -67,7 +66,7 @@ class TablesViewModelTest {
         }
 
     @Test
-    fun `selecting an occupied table resumes its existing order without creating a new one`() =
+    fun `selecting an occupied table resumes its existing order without queueing a new one`() =
         runTest {
             val viewModel = viewModel()
             val occupiedRow = TableRow(id = "t1", label = "Stolik 1", seats = 4, occupied = true, openOrderId = "o1")
@@ -77,22 +76,28 @@ class TablesViewModelTest {
                 assertEquals(TableSession(orderId = "o1", tableId = "t1"), awaitItem())
                 cancelAndIgnoreRemainingEvents()
             }
-            coVerify(exactly = 0) { salesApi.createOrder(any()) }
+            coVerify(exactly = 0) { syncQueue.createOrder(any(), any()) }
+            coVerify(exactly = 0) { syncQueue.occupyTable(any(), any()) }
         }
 
     @Test
-    fun `selecting a free table creates and occupies an order before opening it`() =
+    fun `selecting a free table queues create-order and occupy, then opens it immediately`() =
         runTest {
-            coEvery { salesApi.createOrder(CreateOrderRequestDto(placeId = "place-1")) } returns OrderDto(id = "o2")
-            coEvery { tablesApi.occupy("t2", "o2") } returns Unit
             val viewModel = viewModel()
             val freeRow = TableRow(id = "t2", label = "Stolik 2", seats = 2, occupied = false, openOrderId = null)
+            var openedOrderId: String? = null
 
             viewModel.openedTable.test {
                 viewModel.selectTable(freeRow)
-                assertEquals(TableSession(orderId = "o2", tableId = "t2"), awaitItem())
+                val session = awaitItem()
+                assertEquals("t2", session.tableId)
+                openedOrderId = session.orderId
                 cancelAndIgnoreRemainingEvents()
             }
-            coVerify { tablesApi.occupy("t2", "o2") }
+
+            val orderIdSlot = slot<String>()
+            coVerify { syncQueue.createOrder(capture(orderIdSlot), "place-1") }
+            assertEquals(openedOrderId, orderIdSlot.captured)
+            coVerify { syncQueue.occupyTable("t2", openedOrderId!!) }
         }
 }

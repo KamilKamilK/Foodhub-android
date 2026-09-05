@@ -13,6 +13,9 @@ data class PaymentMethodDto(
 @Serializable
 data class CreateOrderRequestDto(
     @SerialName("placeId") val placeId: String,
+    // Client-supplied so a queued retry after a dropped response is a no-op on the
+    // backend instead of creating a duplicate order (core:sync).
+    @SerialName("orderId") val orderId: String? = null,
 )
 
 @Serializable
@@ -24,6 +27,9 @@ data class OrderLineRequestDto(
     @SerialName("unitPriceCurrency") val unitPriceCurrency: String = "PLN",
     @SerialName("discountId") val discountId: String? = null,
     @SerialName("discountAmount") val discountAmount: Long = 0,
+    // Client-supplied so a queued retry after a dropped response is a no-op on the
+    // backend instead of duplicating the line (core:sync).
+    @SerialName("lineId") val lineId: String? = null,
 )
 
 @Serializable
@@ -62,6 +68,9 @@ data class IssueReceiptRequestDto(
     // Attribute values captured at issue time (occurrence = sales_documents),
     // fed to the "sales by attributes" report -- ANDROID_POS_ARCHITECTURE.md 2.5.
     @SerialName("attributeValueIds") val attributeValueIds: List<Int> = emptyList(),
+    // Client-supplied so a queued retry after a dropped response is a no-op on the
+    // backend instead of issuing a second receipt for the same sale (core:sync).
+    @SerialName("receiptId") val receiptId: String? = null,
 )
 
 @Serializable
@@ -76,6 +85,9 @@ data class IssueInvoiceRequestDto(
     @SerialName("paymentMethod") val paymentMethod: String,
     @SerialName("dueDate") val dueDate: String,
     @SerialName("attributeValueIds") val attributeValueIds: List<Int> = emptyList(),
+    // Client-supplied so a queued retry after a dropped response is a no-op on the
+    // backend instead of issuing a second invoice for the same sale (core:sync).
+    @SerialName("invoiceId") val invoiceId: String? = null,
 )
 
 @Serializable

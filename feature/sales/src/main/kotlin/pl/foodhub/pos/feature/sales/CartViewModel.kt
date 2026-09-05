@@ -16,8 +16,7 @@ import pl.foodhub.pos.core.auth.AuthRepository
 import pl.foodhub.pos.core.common.ApiResult
 import pl.foodhub.pos.core.common.Money
 import pl.foodhub.pos.core.database.MenuCacheDao
-import pl.foodhub.pos.core.network.api.TablesApi
-import pl.foodhub.pos.core.network.apiCall
+import pl.foodhub.pos.core.sync.SyncQueue
 import javax.inject.Inject
 
 data class PickerProduct(
@@ -34,7 +33,7 @@ data class CartUiState(
     val buyerName: String = "",
     val buyerNip: String = "",
     val submitting: Boolean = false,
-    val completedDocumentId: String? = null,
+    val queuedForSync: Boolean = false,
     val error: Boolean = false,
 ) {
     val total: Money get() = lines.total()
@@ -57,7 +56,7 @@ class CartViewModel
         savedStateHandle: SavedStateHandle,
         private val salesRepository: SalesRepository,
         private val authRepository: AuthRepository,
-        private val tablesApi: TablesApi,
+        private val syncQueue: SyncQueue,
         menuCacheDao: MenuCacheDao,
     ) : ViewModel() {
         private val orderId: String = checkNotNull(savedStateHandle["orderId"])
@@ -146,25 +145,9 @@ class CartViewModel
                         attributeValueIds = current.selectedAttributeValueIds.toList(),
                     )
 
-                when (
-                    val result =
-                        salesRepository.checkout(
-                            orderId = orderId,
-                            placeId = placeId,
-                            lines = current.lines,
-                            options = options,
-                        )
-                ) {
-                    is ApiResult.Success -> {
-                        // Best-effort: the sale is already final. If this fails the table
-                        // stays marked occupied until manually released or reconciled --
-                        // TODO(Faza 2): conflict-safe occupancy, ANDROID_POS_ARCHITECTURE.md
-                        // section 9 point 4.
-                        apiCall { tablesApi.release(tableId, orderId) }
-                        _state.update { it.copy(submitting = false, completedDocumentId = result.value) }
-                    }
-                    else -> _state.update { it.copy(submitting = false, error = true) }
-                }
+                salesRepository.checkout(orderId = orderId, placeId = placeId, lines = current.lines, options = options)
+                syncQueue.releaseTable(tableId, orderId)
+                _state.update { it.copy(submitting = false, queuedForSync = true) }
             }
         }
     }

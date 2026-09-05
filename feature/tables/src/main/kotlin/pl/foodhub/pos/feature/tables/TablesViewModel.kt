@@ -12,10 +12,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import pl.foodhub.pos.core.auth.AuthRepository
 import pl.foodhub.pos.core.common.ApiResult
-import pl.foodhub.pos.core.network.api.SalesApi
 import pl.foodhub.pos.core.network.api.TablesApi
 import pl.foodhub.pos.core.network.apiCall
-import pl.foodhub.pos.core.network.model.CreateOrderRequestDto
+import pl.foodhub.pos.core.sync.SyncQueue
+import java.util.UUID
 import javax.inject.Inject
 
 data class TableRow(
@@ -36,20 +36,21 @@ data class TablesUiState(
 data class TableSession(val orderId: String, val tableId: String)
 
 /**
- * Faza 1: read the room layout and which tables have an open order, and open one for
- * ordering -- a free table gets a new order created and occupied in one step
- * (`POST /v1/order/orders` -> `POST /v1/tables/{tableId}/occupy/{orderId}`), an
- * already-occupied table is resumed by its existing order. Conflict-safe occupy for
- * two terminals racing the same table (versioned resources on the API side) is Faza 2
- * -- ANDROID_POS_ARCHITECTURE.md section 9 point 4.
+ * Reads the room layout and which tables have an open order, and opens one for
+ * ordering: a free table's order-create + occupy goes through [SyncQueue] and returns
+ * immediately (optimistic, ANDROID_POS_ARCHITECTURE.md section 9 point 2) instead of
+ * waiting on the network; an already-occupied table is resumed by its existing order.
+ * A losing occupy (another terminal grabbed the same table first, section 9 point 4)
+ * doesn't surface here as an error -- the queue's worker reconciles it, and the next
+ * [load] shows the table's real occupant.
  */
 @HiltViewModel
 class TablesViewModel
     @Inject
     constructor(
         private val tablesApi: TablesApi,
-        private val salesApi: SalesApi,
         private val authRepository: AuthRepository,
+        private val syncQueue: SyncQueue,
     ) : ViewModel() {
         private val _state = MutableStateFlow(TablesUiState())
         val state = _state.asStateFlow()
@@ -100,16 +101,10 @@ class TablesViewModel
                     return@launch
                 }
 
-                when (val created = apiCall { salesApi.createOrder(CreateOrderRequestDto(placeId)) }) {
-                    is ApiResult.Success -> {
-                        val orderId = created.value.id
-                        when (apiCall { tablesApi.occupy(table.id, orderId) }) {
-                            is ApiResult.Success -> _openedTable.send(TableSession(orderId, table.id))
-                            else -> _state.update { it.copy(error = true) }
-                        }
-                    }
-                    else -> _state.update { it.copy(error = true) }
-                }
+                val orderId = UUID.randomUUID().toString()
+                syncQueue.createOrder(orderId, placeId)
+                syncQueue.occupyTable(table.id, orderId)
+                _openedTable.send(TableSession(orderId, table.id))
             }
         }
     }

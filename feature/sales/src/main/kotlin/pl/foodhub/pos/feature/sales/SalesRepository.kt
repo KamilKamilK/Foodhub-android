@@ -11,9 +11,10 @@ import pl.foodhub.pos.core.network.model.FinalizeOrderRequestDto
 import pl.foodhub.pos.core.network.model.IssueInvoiceRequestDto
 import pl.foodhub.pos.core.network.model.IssueReceiptRequestDto
 import pl.foodhub.pos.core.network.model.OrderLineRequestDto
-import pl.foodhub.pos.core.network.model.SalesDocumentDto
+import pl.foodhub.pos.core.sync.SyncQueue
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.UUID
 import javax.inject.Inject
 
 enum class PaymentMethod(val apiValue: String) {
@@ -37,19 +38,19 @@ data class CheckoutOptions(
 )
 
 /**
- * Online checkout against the DDD order/document endpoints, in the same order the web
- * POS runs them (foodhub-app sales/api/pos-runtime.ts): add lines to the order opened
- * when the table was occupied (TablesViewModel) -> finalize(paymentMethod) -> issue a
- * receipt, or an invoice when the buyer supplied a NIP (section 2.5 attribute picker
- * feeds attributeValueIds on either document).
- *
- * TODO(Faza 2): wrap this sequence in the offline write-ahead queue (core:sync) so a
- * connectivity drop mid-checkout does not lose the sale.
+ * Queues the checkout sequence -- add lines, confirm, finalize, then issue a receipt or
+ * an invoice when the buyer supplied a NIP -- through [SyncQueue] instead of calling
+ * the network directly, so a connectivity drop mid-checkout never loses the sale
+ * (ANDROID_POS_ARCHITECTURE.md section 9 point 2, closing this class's former Faza 2
+ * TODO). Every step's id (line/receipt/invoice) is generated here so a queued retry
+ * after a dropped response is a backend no-op rather than a duplicate (section 9
+ * point 4).
  */
 class SalesRepository
     @Inject
     constructor(
         private val salesApi: SalesApi,
+        private val syncQueue: SyncQueue,
         private val dispatchers: DispatcherProvider,
     ) {
         suspend fun attributes(): ApiResult<List<SalesAttribute>> =
@@ -70,45 +71,22 @@ class SalesRepository
             placeId: String,
             lines: List<CartLine>,
             options: CheckoutOptions,
-        ): ApiResult<String> =
-            withContext(dispatchers.io) {
-                addLines(orderId, lines)?.let { return@withContext it }
-
-                val confirmed = apiCall { salesApi.confirm(orderId) }
-                if (confirmed is ApiResult.HttpError) return@withContext confirmed
-                if (confirmed is ApiResult.NetworkError) return@withContext confirmed
-
-                val finalized =
-                    apiCall { salesApi.finalize(orderId, FinalizeOrderRequestDto(options.paymentMethod.apiValue)) }
-                if (finalized is ApiResult.HttpError) return@withContext finalized
-                if (finalized is ApiResult.NetworkError) return@withContext finalized
-
-                issueDocument(orderId, placeId, lines, options).map { it.id }
-            }
-
-        /** Adds every cart line to the draft order; returns the first failure, or null once all succeed. */
-        private suspend fun addLines(
-            orderId: String,
-            lines: List<CartLine>,
-        ): ApiResult<String>? {
+        ) = withContext(dispatchers.io) {
             lines.forEach { line ->
-                val added =
-                    apiCall {
-                        salesApi.addLine(
-                            orderId = orderId,
-                            body =
-                                OrderLineRequestDto(
-                                    productId = line.productId,
-                                    productName = line.productName,
-                                    quantity = line.quantity,
-                                    unitPriceAmount = line.unitPriceGross.minorUnits,
-                                ),
-                        )
-                    }
-                if (added is ApiResult.HttpError) return added
-                if (added is ApiResult.NetworkError) return added
+                syncQueue.addOrderLine(
+                    orderId,
+                    OrderLineRequestDto(
+                        productId = line.productId,
+                        productName = line.productName,
+                        quantity = line.quantity,
+                        unitPriceAmount = line.unitPriceGross.minorUnits,
+                        lineId = UUID.randomUUID().toString(),
+                    ),
+                )
             }
-            return null
+            syncQueue.confirmOrder(orderId)
+            syncQueue.finalizeOrder(orderId, FinalizeOrderRequestDto(options.paymentMethod.apiValue))
+            issueDocument(orderId, placeId, lines, options)
         }
 
         private suspend fun issueDocument(
@@ -116,40 +94,38 @@ class SalesRepository
             placeId: String,
             lines: List<CartLine>,
             options: CheckoutOptions,
-        ): ApiResult<SalesDocumentDto> {
+        ) {
             val (paymentMethod, invoiceDetails, attributeValueIds) = options
             val documentLines = lines.toDocumentLines()
             val totalGrossAmount = lines.total().minorUnits
 
-            return if (invoiceDetails != null) {
-                apiCall {
-                    salesApi.issueInvoice(
-                        IssueInvoiceRequestDto(
-                            orderId = orderId,
-                            placeId = placeId,
-                            buyerName = invoiceDetails.buyerName,
-                            buyerNip = invoiceDetails.buyerNip,
-                            lines = documentLines,
-                            totalGrossAmount = totalGrossAmount,
-                            paymentMethod = paymentMethod.apiValue,
-                            dueDate = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE),
-                            attributeValueIds = attributeValueIds,
-                        ),
-                    )
-                }
+            if (invoiceDetails != null) {
+                syncQueue.issueInvoice(
+                    IssueInvoiceRequestDto(
+                        orderId = orderId,
+                        placeId = placeId,
+                        buyerName = invoiceDetails.buyerName,
+                        buyerNip = invoiceDetails.buyerNip,
+                        lines = documentLines,
+                        totalGrossAmount = totalGrossAmount,
+                        paymentMethod = paymentMethod.apiValue,
+                        dueDate = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE),
+                        attributeValueIds = attributeValueIds,
+                        invoiceId = UUID.randomUUID().toString(),
+                    ),
+                )
             } else {
-                apiCall {
-                    salesApi.issueReceipt(
-                        IssueReceiptRequestDto(
-                            orderId = orderId,
-                            placeId = placeId,
-                            lines = documentLines,
-                            totalGrossAmount = totalGrossAmount,
-                            paymentMethod = paymentMethod.apiValue,
-                            attributeValueIds = attributeValueIds,
-                        ),
-                    )
-                }
+                syncQueue.issueReceipt(
+                    IssueReceiptRequestDto(
+                        orderId = orderId,
+                        placeId = placeId,
+                        lines = documentLines,
+                        totalGrossAmount = totalGrossAmount,
+                        paymentMethod = paymentMethod.apiValue,
+                        attributeValueIds = attributeValueIds,
+                        receiptId = UUID.randomUUID().toString(),
+                    ),
+                )
             }
         }
 

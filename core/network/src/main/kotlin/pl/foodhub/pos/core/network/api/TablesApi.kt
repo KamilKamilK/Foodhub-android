@@ -1,6 +1,7 @@
 package pl.foodhub.pos.core.network.api
 
 import pl.foodhub.pos.core.network.model.OccupiedTableDto
+import pl.foodhub.pos.core.network.model.OccupyTableResponseDto
 import pl.foodhub.pos.core.network.model.TableDto
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -18,7 +19,7 @@ interface TablesApi {
     suspend fun occupy(
         @Path("tableId") tableId: String,
         @Path("orderId") orderId: String,
-    )
+    ): OccupyTableResponseDto
 
     @DELETE("v1/tables/{tableId}/occupy/{orderId}")
     suspend fun release(

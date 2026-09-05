@@ -15,7 +15,6 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -25,13 +24,13 @@ import pl.foodhub.pos.core.auth.PosSession
 import pl.foodhub.pos.core.common.ApiResult
 import pl.foodhub.pos.core.common.Money
 import pl.foodhub.pos.core.database.MenuCacheDao
-import pl.foodhub.pos.core.network.api.TablesApi
+import pl.foodhub.pos.core.sync.SyncQueue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CartViewModelTest {
-    private val salesRepository = mockk<SalesRepository>()
+    private val salesRepository = mockk<SalesRepository>(relaxed = true)
     private val authRepository = mockk<AuthRepository>()
-    private val tablesApi = mockk<TablesApi>(relaxed = true)
+    private val syncQueue = mockk<SyncQueue>(relaxed = true)
     private val menuCacheDao = mockk<MenuCacheDao>()
 
     private val product = PickerProduct(productId = "p1", name = "Pizza", unitPriceGross = Money(2500))
@@ -52,7 +51,7 @@ class CartViewModelTest {
 
     private fun viewModel(): CartViewModel {
         val savedStateHandle = SavedStateHandle(mapOf("orderId" to "o1", "tableId" to "t1"))
-        return CartViewModel(savedStateHandle, salesRepository, authRepository, tablesApi, menuCacheDao)
+        return CartViewModel(savedStateHandle, salesRepository, authRepository, syncQueue, menuCacheDao)
     }
 
     @Test
@@ -78,18 +77,15 @@ class CartViewModelTest {
     }
 
     @Test
-    fun `checkout issues a document and releases the table on success`() =
+    fun `checkout queues the sale and releases the table`() =
         runTest {
-            coEvery { salesRepository.checkout(any(), any(), any(), any()) } returns
-                ApiResult.Success("doc-1")
-
             val viewModel = viewModel()
             viewModel.addProduct(product)
 
             viewModel.checkout()
             runCurrent()
 
-            assertEquals("doc-1", viewModel.state.value.completedDocumentId)
+            assertTrue(viewModel.state.value.queuedForSync)
             val expectedOptions =
                 CheckoutOptions(PaymentMethod.CASH, invoiceDetails = null, attributeValueIds = emptyList())
             coVerify {
@@ -100,7 +96,7 @@ class CartViewModelTest {
                     options = eq(expectedOptions),
                 )
             }
-            coVerify { tablesApi.release("t1", "o1") }
+            coVerify { syncQueue.releaseTable("t1", "o1") }
         }
 
     @Test

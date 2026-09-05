@@ -36,6 +36,11 @@ interface SalesApi {
         @Body body: CreateOrderRequestDto,
     ): OrderDto
 
+    @GET("v1/order/orders/{orderId}")
+    suspend fun getOrder(
+        @Path("orderId") orderId: String,
+    ): OrderDto
+
     @POST("v1/order/orders/{orderId}/lines")
     suspend fun addLine(
         @Path("orderId") orderId: String,

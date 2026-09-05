@@ -11,6 +11,7 @@ import pl.foodhub.pos.core.database.FoodHubPosDatabase
 import pl.foodhub.pos.core.database.MenuCacheDao
 import pl.foodhub.pos.core.database.RoomTransactionQueue
 import pl.foodhub.pos.core.database.SyncOperationDao
+import pl.foodhub.pos.core.database.TableCacheDao
 import pl.foodhub.pos.core.database.TransactionQueue
 import javax.inject.Singleton
 
@@ -31,6 +32,9 @@ object DatabaseModule {
 
     @Provides
     fun syncOperationDao(database: FoodHubPosDatabase): SyncOperationDao = database.syncOperationDao()
+
+    @Provides
+    fun tableCacheDao(database: FoodHubPosDatabase): TableCacheDao = database.tableCacheDao()
 
     @Provides
     @Singleton

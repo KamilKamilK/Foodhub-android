@@ -27,6 +27,7 @@ dependencies {
     implementation(projects.core.network)
     implementation(projects.core.auth)
     implementation(projects.core.sync)
+    implementation(projects.core.database)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

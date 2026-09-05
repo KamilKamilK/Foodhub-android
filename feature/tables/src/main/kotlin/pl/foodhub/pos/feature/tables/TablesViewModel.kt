@@ -12,8 +12,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import pl.foodhub.pos.core.auth.AuthRepository
 import pl.foodhub.pos.core.common.ApiResult
-import pl.foodhub.pos.core.network.api.TablesApi
-import pl.foodhub.pos.core.network.apiCall
 import pl.foodhub.pos.core.sync.SyncQueue
 import java.util.UUID
 import javax.inject.Inject
@@ -30,6 +28,8 @@ data class TablesUiState(
     val tables: List<TableRow> = emptyList(),
     val loading: Boolean = true,
     val error: Boolean = false,
+    val stale: Boolean = false,
+    val emptyOffline: Boolean = false,
 )
 
 /** A table opened for ordering: either just occupied, or already had an open order. */
@@ -43,12 +43,17 @@ data class TableSession(val orderId: String, val tableId: String)
  * A losing occupy (another terminal grabbed the same table first, section 9 point 4)
  * doesn't surface here as an error -- the queue's worker reconciles it, and the next
  * [load] shows the table's real occupant.
+ *
+ * The table list itself is observed from [TablesRepository]'s Room cache, mirroring how
+ * `feature:menu` serves the menu screen: a failed [load] falls back to the last-known
+ * list with [TablesUiState.stale] set when a cache exists, or reports
+ * [TablesUiState.emptyOffline] when there is none to fall back on.
  */
 @HiltViewModel
 class TablesViewModel
     @Inject
     constructor(
-        private val tablesApi: TablesApi,
+        private val tablesRepository: TablesRepository,
         private val authRepository: AuthRepository,
         private val syncQueue: SyncQueue,
     ) : ViewModel() {
@@ -58,31 +63,23 @@ class TablesViewModel
         private val _openedTable = Channel<TableSession>(Channel.BUFFERED)
         val openedTable = _openedTable.receiveAsFlow()
 
+        init {
+            viewModelScope.launch {
+                tablesRepository.tables.collect { tables ->
+                    _state.update { it.copy(tables = tables) }
+                }
+            }
+        }
+
         fun load() {
             _state.update { it.copy(loading = true, error = false) }
             viewModelScope.launch {
-                val tables = apiCall { tablesApi.tables() }
-                val occupied = apiCall { tablesApi.occupiedTables() }
-
-                if (tables is ApiResult.Success && occupied is ApiResult.Success) {
-                    val openByTable = occupied.value.associateBy({ it.tableId }, { it.orderId })
-                    _state.update {
-                        it.copy(
-                            loading = false,
-                            tables =
-                                tables.value.map { table ->
-                                    TableRow(
-                                        id = table.id,
-                                        label = table.name.ifBlank { "Stolik ${table.number}" },
-                                        seats = table.seats,
-                                        occupied = openByTable.containsKey(table.id),
-                                        openOrderId = openByTable[table.id],
-                                    )
-                                },
-                        )
-                    }
+                val result = tablesRepository.refresh()
+                if (result is ApiResult.Success) {
+                    _state.update { it.copy(loading = false, stale = false, emptyOffline = false) }
                 } else {
-                    _state.update { it.copy(loading = false, error = true) }
+                    val hasCache = tablesRepository.hasCachedTables()
+                    _state.update { it.copy(loading = false, stale = hasCache, emptyOffline = !hasCache) }
                 }
             }
         }

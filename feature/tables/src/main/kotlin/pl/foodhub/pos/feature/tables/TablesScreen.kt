@@ -20,9 +20,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import pl.foodhub.pos.core.designsystem.theme.FoodHubWarning
 
 @Composable
 fun TablesRoute(
@@ -46,13 +48,24 @@ internal fun TablesScreen(
     onSelectTable: (TableRow) -> Unit,
 ) {
     Column(Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Wybierz stolik", style = MaterialTheme.typography.headlineSmall)
+        Text(
+            if (state.stale) "Wybierz stolik (dane offline)" else "Wybierz stolik",
+            style = MaterialTheme.typography.headlineSmall,
+            color = if (state.stale) FoodHubWarning else MaterialTheme.colorScheme.onSurface,
+        )
 
         when {
             state.loading ->
                 CircularProgressIndicator(Modifier.padding(24.dp).align(Alignment.CenterHorizontally))
             state.error ->
                 Text("Nie udało się wczytać stolików.", color = MaterialTheme.colorScheme.error)
+            state.emptyOffline ->
+                Text(
+                    "Brak danych o stolikach — połącz się z internetem, aby pobrać listę po raz pierwszy.",
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 24.dp),
+                )
             else ->
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 140.dp),

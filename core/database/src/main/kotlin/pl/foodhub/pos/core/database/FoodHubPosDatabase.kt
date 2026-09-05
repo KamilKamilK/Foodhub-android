@@ -8,12 +8,15 @@ import androidx.room.RoomDatabase
         MenuGroupEntity::class,
         MenuItemEntity::class,
         SyncOperationEntity::class,
+        TableCacheEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class FoodHubPosDatabase : RoomDatabase() {
     abstract fun menuCacheDao(): MenuCacheDao
 
     abstract fun syncOperationDao(): SyncOperationDao
+
+    abstract fun tableCacheDao(): TableCacheDao
 }

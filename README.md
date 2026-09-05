@@ -36,24 +36,31 @@ checksum. Enable the hooks:
 git config core.hooksPath .githooks
 ```
 
-Remaining hardening (signing config, per-client API URL, cert pinning, instrumented
-tests) is tracked in [`docs/bring-up.md`](docs/bring-up.md).
+Remaining hardening (signing config, per-client API URL, cert pinning) is tracked in
+[`docs/bring-up.md`](docs/bring-up.md).
 
 ## Build & check
 
 ```
-./gradlew assembleDebug        # debug APK
-./gradlew testDebugUnitTest    # JVM unit tests
-./gradlew ktlintCheck detekt   # static analysis
+./gradlew assembleDebug                    # debug APK
+./gradlew testDebugUnitTest                # JVM unit tests
+./gradlew ktlintCheck detekt                # static analysis
+./gradlew :app:connectedDebugAndroidTest   # instrumented (on-device) tests
 ```
 
-`./gradlew ktlintFormat` auto-fixes style. The pre-push hook runs the same four
-checks as CI.
+`./gradlew ktlintFormat` auto-fixes style. The pre-push hook runs the first three
+checks (same as CI's `android-quality` job); instrumented tests need a running
+emulator/device so they're a separate CI job (`instrumented-tests`) and not part of the
+hook.
 
 ## Module map
 
 ```
-app/                      Application, Hilt graph, NavHost, MainActivity
+app/                      Application, Hilt graph, NavHost, MainActivity; androidTest/
+                          holds the instrumented Compose UI tests (PIN login, tables ->
+                          menu -> cart, core:sync's offline queue) plus their Hilt test
+                          support (HiltTestRunner, HiltTestActivity, TestNetworkModule
+                          backed by MockWebServer)
 core/
   common/                 ApiResult, DispatcherProvider, Money (grosze)
   designsystem/           Compose theme (foodhub-app palette), PinPad, PrimaryButton

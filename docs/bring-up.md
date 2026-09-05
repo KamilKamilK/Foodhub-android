@@ -18,6 +18,18 @@ Cała bramka jakości przechodzi na JDK 17 + SDK 35:
 
 `./gradlew ktlintFormat` auto-poprawia formatowanie. Pre-push hook uruchamia to samo co CI.
 
+Testy instrumentalne (`androidTest`, moduł `app`) wymagają uruchomionego emulatora/urządzenia
+(API 35) i nie wchodzą w pre-push/pre-commit (za wolne na hook lokalny):
+
+```
+./gradlew :app:connectedDebugAndroidTest
+```
+
+Hermetyczne — `TestNetworkModule` (`@TestInstallIn`) podmienia `core:network`'s
+`NetworkModule` na Retrofit/OkHttp wskazujący na `MockWebServer` w tym samym procesie, więc
+nie zależą od żywego `foodhub-api`. CI uruchamia je na emulatorze przyspieszonym KVM
+(`instrumented-tests` w `android-quality.yml`).
+
 ### Uwaga o strukturze build-scriptów
 
 Nie ma `build-logic`/`buildSrc` ani convention pluginów. Included/buildSrc build
@@ -34,8 +46,7 @@ konwencjonalne pluginy można wprowadzić refaktoringiem.
 - [ ] `productFlavor` / build config per klient dla `foodhub_api_base_url` (dziś jeden URL w `core/network/src/main/res/values/config.xml`).
 - [ ] `CertificatePinner` w `NetworkModule` (TODO w kodzie, sekcja 12 arch-doca).
 - [ ] `gradle/verification-metadata.xml` — weryfikacja checksumów zależności; `./gradlew --write-verification-metadata sha256 help` po ustabilizowaniu wersji.
-- [ ] Testy instrumentalne (`androidTest`) — dziś tylko testy JVM.
-- [ ] Ochrona brancha `main` na GitHubie: wymagany zielony `Android Quality`.
+- [ ] Ochrona brancha `main` na GitHubie: wymagany zielony `Android Quality` (oba jobs — `android-quality` i `instrumented-tests`).
 - [ ] `feature:sales` / `feature:tables` — ciała `TODO` do dokończenia (picker atrybutów sprzedaży, NIP→faktura, occupy/release stolika, `placeId` z kontekstu POS-a).
 
 ## 3. Faza 1 — walidacja kontraktu na żywym terminalu

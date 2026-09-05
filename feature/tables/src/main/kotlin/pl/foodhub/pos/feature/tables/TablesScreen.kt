@@ -1,5 +1,6 @@
 package pl.foodhub.pos.feature.tables
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -60,22 +61,42 @@ internal fun TablesScreen(
                     modifier = Modifier.padding(top = 16.dp),
                 ) {
                     items(state.tables, key = { it.id }) { table ->
+                        val danger = MaterialTheme.colorScheme.error
                         Card(
                             onClick = { onSelectTable(table) },
                             modifier = Modifier.fillMaxWidth(),
                             colors =
                                 if (table.occupied) {
-                                    CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                    )
+                                    CardDefaults.cardColors(containerColor = danger.copy(alpha = 0.08f))
                                 } else {
                                     CardDefaults.cardColors()
                                 },
+                            border =
+                                BorderStroke(
+                                    width = 1.dp,
+                                    color =
+                                        if (table.occupied) {
+                                            danger.copy(alpha = 0.35f)
+                                        } else {
+                                            MaterialTheme.colorScheme.outline
+                                        },
+                                ),
                         ) {
-                            Column(Modifier.padding(12.dp)) {
+                            Column(Modifier.padding(16.dp)) {
                                 Text(table.label, style = MaterialTheme.typography.titleMedium)
-                                Text("${table.seats} miejsc", style = MaterialTheme.typography.bodySmall)
-                                if (table.occupied) Text("Zajęty", style = MaterialTheme.typography.labelSmall)
+                                Text(
+                                    "${table.seats} miejsc",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                if (table.occupied) {
+                                    Text(
+                                        "Zajęty",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = danger,
+                                        modifier = Modifier.padding(top = 4.dp),
+                                    )
+                                }
                             }
                         }
                     }

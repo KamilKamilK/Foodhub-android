@@ -57,7 +57,21 @@ internal fun PinLoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("Zaloguj się PIN-em", style = MaterialTheme.typography.headlineSmall)
+            Text(
+                "LOGOWANIE",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                "FoodHub Atelier",
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Text(
+                "Zaloguj się PIN-em",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
 
             PinPad(pin = state.pin, onPinChange = onPinChange, maxLength = PinLoginUiState.MAX_PIN_LENGTH)
 

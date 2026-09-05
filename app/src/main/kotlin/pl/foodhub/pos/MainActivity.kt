@@ -4,7 +4,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
@@ -20,12 +24,14 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             FoodHubTheme {
-                val viewModel: MainViewModel = hiltViewModel()
-                val session by viewModel.session.collectAsStateWithLifecycle()
+                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    val viewModel: MainViewModel = hiltViewModel()
+                    val session by viewModel.session.collectAsStateWithLifecycle()
 
-                FoodHubNavHost(
-                    startAuthenticated = session is SessionState.Authenticated,
-                )
+                    FoodHubNavHost(
+                        startAuthenticated = session is SessionState.Authenticated,
+                    )
+                }
             }
         }
     }

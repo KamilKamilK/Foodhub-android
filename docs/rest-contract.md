@@ -44,3 +44,14 @@ Wycinek API `foodhub-api` używany przez appkę. Wyekstrahowany z przeglądarkow
 
 `paymentMethod`: `cash` \| `card` \| `bank_transfer`. Kwoty w groszach (minor units),
 tak jak w kontrakcie DDD zamówień.
+
+## Druk (Faza 3)
+
+| Metoda | Ścieżka |
+|---|---|
+| GET | `/v1/places/{placeId}/printers` |
+
+Zwraca `[{ id, name, ip, port, role: "KITCHEN"\|"RECEIPT", orderDirectionIds }]`. Pobierane
+świeżo (bez cache'a) przez `core:printing`'s `PrintRouter` przy każdym wydruku — KITCHEN
+routuje linie po `orderDirectionId` (z `PosMenuItemDto`), RECEIPT dostaje pełny dokument
+niezależnie od kierunku.

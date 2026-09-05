@@ -7,13 +7,15 @@ The cross-cutting design lives in
 [`docs/development/ANDROID_POS_ARCHITECTURE.md`](../foodhub-docs/development/ANDROID_POS_ARCHITECTURE.md)
 in the docs repo. This README covers only how to build and what is in the tree today.
 
-## Status — Faza 1 and Faza 2 closed, device-verified
+## Status — Faza 1, Faza 2 and Faza 3 closed, device-verified
 
 Faza 1 (PIN login, table occupy/resume, read-only menu, online checkout with receipt/NIP
-invoice) and Faza 2 (`core:sync`'s offline write-ahead queue: Room-backed queue, WorkManager
-sync, conflict/idempotent-retry handling) are both closed and verified end to end against a
-live `foodhub-api` on a real emulator, including realistic offline/online network toggling.
-Printing, Mercure real-time, FCM and fiscalisation (Fazy 3–6) are **not** here yet. See
+invoice), Faza 2 (`core:sync`'s offline write-ahead queue: Room-backed queue, WorkManager
+sync, conflict/idempotent-retry handling) and Faza 3 (`core:printing`: LAN ESC/POS kitchen/bar
+tickets routed by product order-direction, plus the customer receipt copy) are all closed and
+verified end to end against a live `foodhub-api` on a real emulator, including realistic
+offline/online network toggling and real ESC/POS bytes captured on TCP listeners standing in
+for printers. Mercure real-time, FCM and fiscalisation (Fazy 4–6) are **not** here yet. See
 `docs/development/ANDROID_POS_ARCHITECTURE.md` §14 for the full verification record.
 
 `./gradlew ktlintCheck detekt testDebugUnitTest assembleDebug` is green on JDK 17 +

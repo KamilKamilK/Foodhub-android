@@ -1,6 +1,5 @@
 package pl.foodhub.pos.core.designsystem.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -66,9 +65,12 @@ private val DarkColors =
         error = Danger,
     )
 
+// The terminal is a fixed, branded appliance rather than a general consumer app, so
+// it always renders the same navy identity as the web panel's sidebar instead of
+// following the device's system light/dark setting.
 @Composable
 fun FoodHubTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     MaterialTheme(

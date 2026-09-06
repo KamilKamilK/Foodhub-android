@@ -12,6 +12,7 @@ import pl.foodhub.pos.core.common.DefaultDispatcherProvider
 import pl.foodhub.pos.core.common.DispatcherProvider
 import pl.foodhub.pos.core.network.api.AuthApi
 import pl.foodhub.pos.core.network.api.MenuApi
+import pl.foodhub.pos.core.network.api.PrintersApi
 import pl.foodhub.pos.core.network.api.SalesApi
 import pl.foodhub.pos.core.network.api.TablesApi
 import pl.foodhub.pos.core.network.auth.AuthInterceptor
@@ -111,4 +112,8 @@ object TestNetworkModule {
     @Provides
     @Singleton
     fun tablesApi(retrofit: Retrofit): TablesApi = retrofit.create(TablesApi::class.java)
+
+    @Provides
+    @Singleton
+    fun printersApi(retrofit: Retrofit): PrintersApi = retrofit.create(PrintersApi::class.java)
 }

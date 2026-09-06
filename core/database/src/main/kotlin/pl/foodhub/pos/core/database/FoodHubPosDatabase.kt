@@ -9,8 +9,9 @@ import androidx.room.RoomDatabase
         MenuItemEntity::class,
         SyncOperationEntity::class,
         TableCacheEntity::class,
+        FiscalizationRecordEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 abstract class FoodHubPosDatabase : RoomDatabase() {
@@ -19,4 +20,6 @@ abstract class FoodHubPosDatabase : RoomDatabase() {
     abstract fun syncOperationDao(): SyncOperationDao
 
     abstract fun tableCacheDao(): TableCacheDao
+
+    abstract fun fiscalizationRecordDao(): FiscalizationRecordDao
 }

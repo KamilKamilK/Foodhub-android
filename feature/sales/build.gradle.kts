@@ -29,6 +29,7 @@ dependencies {
     implementation(projects.core.auth)
     implementation(projects.core.sync)
     implementation(projects.core.printing)
+    implementation(projects.core.fiscal)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

@@ -42,6 +42,7 @@ class CartViewModelTest {
         every { authRepository.posSession } returns
             flowOf(PosSession(placeId = "place-1", placeName = "Bistro", posId = "pos-9"))
         coEvery { salesRepository.attributes() } returns ApiResult.Success(emptyList())
+        coEvery { salesRepository.checkout(any(), any(), any(), any()) } returns CheckoutResult.Success
     }
 
     @After
@@ -97,6 +98,22 @@ class CartViewModelTest {
                 )
             }
             coVerify { syncQueue.releaseTable("t1", "o1") }
+        }
+
+    @Test
+    fun `checkout surfaces the fiscal device failure reason and does not release the table`() =
+        runTest {
+            coEvery { salesRepository.checkout(any(), any(), any(), any()) } returns
+                CheckoutResult.FiscalDeviceFailure("Kasa fiskalna nieosiągalna.")
+            val viewModel = viewModel()
+            viewModel.addProduct(product)
+
+            viewModel.checkout()
+            runCurrent()
+
+            assertFalse(viewModel.state.value.queuedForSync)
+            assertTrue(viewModel.state.value.fiscalDeviceError == "Kasa fiskalna nieosiągalna.")
+            coVerify(exactly = 0) { syncQueue.releaseTable(any(), any()) }
         }
 
     @Test

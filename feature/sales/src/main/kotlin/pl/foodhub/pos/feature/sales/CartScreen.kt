@@ -180,6 +180,9 @@ internal fun CartScreen(
             if (state.error) {
                 Text("Brak sesji terminala — zaloguj się ponownie.", color = MaterialTheme.colorScheme.error)
             }
+            if (state.fiscalDeviceError != null) {
+                Text(state.fiscalDeviceError, color = MaterialTheme.colorScheme.error)
+            }
             if (state.submitting) {
                 CircularProgressIndicator()
             } else {

@@ -4,13 +4,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class PaymentMethodDto(
-    @SerialName("id") val id: Long,
-    @SerialName("name") val name: String,
-    @SerialName("active") val active: Boolean = true,
-)
-
-@Serializable
 data class CreateOrderRequestDto(
     @SerialName("placeId") val placeId: String,
     // Client-supplied so a queued retry after a dropped response is a no-op on the
@@ -71,6 +64,9 @@ data class IssueReceiptRequestDto(
     // Client-supplied so a queued retry after a dropped response is a no-op on the
     // backend instead of issuing a second receipt for the same sale (core:sync).
     @SerialName("receiptId") val receiptId: String? = null,
+    // Which terminal issued this document -- needed so RecordReceiptFiscalization
+    // can later correlate a fiscal device against the same Pos (core:fiscal).
+    @SerialName("posId") val posId: String? = null,
 )
 
 @Serializable
@@ -88,6 +84,9 @@ data class IssueInvoiceRequestDto(
     // Client-supplied so a queued retry after a dropped response is a no-op on the
     // backend instead of issuing a second invoice for the same sale (core:sync).
     @SerialName("invoiceId") val invoiceId: String? = null,
+    // Which terminal issued this document -- needed so RecordInvoiceFiscalization
+    // can later correlate a fiscal device against the same Pos (core:fiscal).
+    @SerialName("posId") val posId: String? = null,
 )
 
 @Serializable

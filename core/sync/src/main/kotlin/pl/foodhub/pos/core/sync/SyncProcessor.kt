@@ -115,6 +115,14 @@ class SyncProcessor
                     val p = json.decodeFromString<PrintReceiptPayload>(payloadJson)
                     printRouter.printReceipt(p.placeId, p.orderId, p.lines, p.totalGrossAmount, p.paymentMethod)
                 }
+                SyncOperationType.RECORD_RECEIPT_FISCALIZATION -> {
+                    val p = json.decodeFromString<RecordReceiptFiscalizationPayload>(payloadJson)
+                    apiCall { salesApi.fiscalizeReceipt(p.receiptId, p.request) }
+                }
+                SyncOperationType.RECORD_INVOICE_FISCALIZATION -> {
+                    val p = json.decodeFromString<RecordInvoiceFiscalizationPayload>(payloadJson)
+                    apiCall { salesApi.fiscalizeInvoice(p.invoiceId, p.request) }
+                }
             }
 
         /**

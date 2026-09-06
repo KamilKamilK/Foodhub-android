@@ -24,6 +24,7 @@ data class PickerProduct(
     val name: String,
     val unitPriceGross: Money,
     val orderDirectionId: Long? = null,
+    val taxRateValue: Double = 0.0,
 )
 
 data class CartUiState(
@@ -36,6 +37,7 @@ data class CartUiState(
     val submitting: Boolean = false,
     val queuedForSync: Boolean = false,
     val error: Boolean = false,
+    val fiscalDeviceError: String? = null,
 ) {
     val total: Money get() = lines.total()
 
@@ -77,6 +79,7 @@ class CartViewModel
                                 it.productName,
                                 Money(it.unitPriceGrossMinor),
                                 it.orderDirectionId,
+                                it.taxRateValue,
                             )
                         }
                 }
@@ -107,6 +110,7 @@ class CartViewModel
                                 product.unitPriceGross,
                                 quantity = 1,
                                 orderDirectionId = product.orderDirectionId,
+                                taxRateValue = product.taxRateValue,
                             )
                     }
                 current.copy(lines = lines, error = false)
@@ -142,7 +146,7 @@ class CartViewModel
             val current = _state.value
             if (!current.canCheckout) return
 
-            _state.update { it.copy(submitting = true, error = false) }
+            _state.update { it.copy(submitting = true, error = false, fiscalDeviceError = null) }
             viewModelScope.launch {
                 val placeId = authRepository.posSession.first()?.placeId
                 if (placeId == null) {
@@ -159,9 +163,23 @@ class CartViewModel
                         attributeValueIds = current.selectedAttributeValueIds.toList(),
                     )
 
-                salesRepository.checkout(orderId = orderId, placeId = placeId, lines = current.lines, options = options)
-                syncQueue.releaseTable(tableId, orderId)
-                _state.update { it.copy(submitting = false, queuedForSync = true) }
+                when (
+                    val result =
+                        salesRepository.checkout(
+                            orderId = orderId,
+                            placeId = placeId,
+                            lines = current.lines,
+                            options = options,
+                        )
+                ) {
+                    is CheckoutResult.FiscalDeviceFailure -> {
+                        _state.update { it.copy(submitting = false, fiscalDeviceError = result.reason) }
+                    }
+                    CheckoutResult.Success -> {
+                        syncQueue.releaseTable(tableId, orderId)
+                        _state.update { it.copy(submitting = false, queuedForSync = true) }
+                    }
+                }
             }
         }
     }

@@ -2,17 +2,21 @@ package pl.foodhub.pos.feature.sales
 
 import io.mockk.coVerify
 import io.mockk.coVerifyOrder
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import pl.foodhub.pos.core.auth.AuthRepository
 import pl.foodhub.pos.core.common.DispatcherProvider
 import pl.foodhub.pos.core.common.Money
+import pl.foodhub.pos.core.fiscal.FiscalCoordinator
 import pl.foodhub.pos.core.network.api.SalesApi
 import pl.foodhub.pos.core.network.model.FinalizeOrderRequestDto
 import pl.foodhub.pos.core.network.model.OrderLineRequestDto
@@ -29,7 +33,16 @@ private class TestDispatcherProvider(dispatcher: CoroutineDispatcher = Unconfine
 class SalesRepositoryTest {
     private val salesApi = mockk<SalesApi>()
     private val syncQueue = mockk<SyncQueue>(relaxed = true)
-    private val repository = SalesRepository(salesApi, syncQueue, TestDispatcherProvider())
+
+    // No posId in the session -- FiscalCoordinator is never consulted (NotConfigured
+    // path), so checkout() behaves exactly as it did before Faza 5's fiscal device work.
+    private val authRepository =
+        mockk<AuthRepository> {
+            every { posSession } returns flowOf(pl.foodhub.pos.core.auth.PosSession("place-1", "Place", posId = null))
+        }
+    private val fiscalCoordinator = mockk<FiscalCoordinator>(relaxed = true)
+    private val repository =
+        SalesRepository(salesApi, syncQueue, authRepository, fiscalCoordinator, TestDispatcherProvider())
 
     private val lines =
         listOf(CartLine(productId = "p1", productName = "Pizza", unitPriceGross = Money(2500), quantity = 2))

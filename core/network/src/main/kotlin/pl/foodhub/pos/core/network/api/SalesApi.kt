@@ -2,11 +2,12 @@ package pl.foodhub.pos.core.network.api
 
 import pl.foodhub.pos.core.network.model.CreateOrderRequestDto
 import pl.foodhub.pos.core.network.model.FinalizeOrderRequestDto
+import pl.foodhub.pos.core.network.model.FiscalizeInvoiceRequestDto
+import pl.foodhub.pos.core.network.model.FiscalizeReceiptRequestDto
 import pl.foodhub.pos.core.network.model.IssueInvoiceRequestDto
 import pl.foodhub.pos.core.network.model.IssueReceiptRequestDto
 import pl.foodhub.pos.core.network.model.OrderDto
 import pl.foodhub.pos.core.network.model.OrderLineRequestDto
-import pl.foodhub.pos.core.network.model.PaymentMethodDto
 import pl.foodhub.pos.core.network.model.SalesAttributeDto
 import pl.foodhub.pos.core.network.model.SalesDocumentDto
 import retrofit2.http.Body
@@ -23,9 +24,6 @@ import retrofit2.http.Query
  * the offline write-ahead queue lands in Faza 2 (core:sync).
  */
 interface SalesApi {
-    @GET("v1/payment-methods")
-    suspend fun paymentMethods(): List<PaymentMethodDto>
-
     @GET("v1/attributes")
     suspend fun salesAttributes(
         @Query("occurrence") occurrence: String = "sales_documents",
@@ -66,5 +64,17 @@ interface SalesApi {
     @POST("v1/order/invoices")
     suspend fun issueInvoice(
         @Body body: IssueInvoiceRequestDto,
+    ): SalesDocumentDto
+
+    @PUT("v1/order/receipts/{id}/fiscalization")
+    suspend fun fiscalizeReceipt(
+        @Path("id") id: String,
+        @Body body: FiscalizeReceiptRequestDto,
+    ): SalesDocumentDto
+
+    @PUT("v1/order/invoices/{id}/fiscalization")
+    suspend fun fiscalizeInvoice(
+        @Path("id") id: String,
+        @Body body: FiscalizeInvoiceRequestDto,
     ): SalesDocumentDto
 }

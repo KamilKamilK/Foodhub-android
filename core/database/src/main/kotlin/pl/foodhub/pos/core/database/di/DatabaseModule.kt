@@ -7,8 +7,11 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import pl.foodhub.pos.core.database.FiscalizationLedger
+import pl.foodhub.pos.core.database.FiscalizationRecordDao
 import pl.foodhub.pos.core.database.FoodHubPosDatabase
 import pl.foodhub.pos.core.database.MenuCacheDao
+import pl.foodhub.pos.core.database.RoomFiscalizationLedger
 import pl.foodhub.pos.core.database.RoomTransactionQueue
 import pl.foodhub.pos.core.database.SyncOperationDao
 import pl.foodhub.pos.core.database.TableCacheDao
@@ -39,4 +42,11 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun transactionQueue(dao: SyncOperationDao): TransactionQueue = RoomTransactionQueue(dao)
+
+    @Provides
+    fun fiscalizationRecordDao(database: FoodHubPosDatabase): FiscalizationRecordDao = database.fiscalizationRecordDao()
+
+    @Provides
+    @Singleton
+    fun fiscalizationLedger(dao: FiscalizationRecordDao): FiscalizationLedger = RoomFiscalizationLedger(dao)
 }

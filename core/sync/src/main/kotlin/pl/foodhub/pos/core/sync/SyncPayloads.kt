@@ -2,6 +2,8 @@ package pl.foodhub.pos.core.sync
 
 import kotlinx.serialization.Serializable
 import pl.foodhub.pos.core.network.model.FinalizeOrderRequestDto
+import pl.foodhub.pos.core.network.model.FiscalizeInvoiceRequestDto
+import pl.foodhub.pos.core.network.model.FiscalizeReceiptRequestDto
 import pl.foodhub.pos.core.network.model.OrderLineRequestDto
 import pl.foodhub.pos.core.printing.PrintableLine
 
@@ -38,3 +40,9 @@ data class PrintReceiptPayload(
     val totalGrossAmount: Long,
     val paymentMethod: String,
 )
+
+@Serializable
+data class RecordReceiptFiscalizationPayload(val receiptId: String, val request: FiscalizeReceiptRequestDto)
+
+@Serializable
+data class RecordInvoiceFiscalizationPayload(val invoiceId: String, val request: FiscalizeInvoiceRequestDto)

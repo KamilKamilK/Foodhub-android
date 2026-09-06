@@ -17,6 +17,7 @@ import pl.foodhub.pos.core.network.ApiContractVersionInterceptor
 import pl.foodhub.pos.core.network.BuildConfig
 import pl.foodhub.pos.core.network.R
 import pl.foodhub.pos.core.network.api.AuthApi
+import pl.foodhub.pos.core.network.api.FiscalDeviceApi
 import pl.foodhub.pos.core.network.api.MenuApi
 import pl.foodhub.pos.core.network.api.PrintersApi
 import pl.foodhub.pos.core.network.api.SalesApi
@@ -132,4 +133,8 @@ object NetworkModule {
     @Provides
     @Singleton
     fun printersApi(retrofit: Retrofit): PrintersApi = retrofit.create(PrintersApi::class.java)
+
+    @Provides
+    @Singleton
+    fun fiscalDeviceApi(retrofit: Retrofit): FiscalDeviceApi = retrofit.create(FiscalDeviceApi::class.java)
 }

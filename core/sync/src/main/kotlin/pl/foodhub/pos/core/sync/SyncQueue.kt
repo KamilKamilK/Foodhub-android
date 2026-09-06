@@ -5,6 +5,8 @@ import kotlinx.serialization.json.Json
 import pl.foodhub.pos.core.database.TransactionQueue
 import pl.foodhub.pos.core.network.model.CreateOrderRequestDto
 import pl.foodhub.pos.core.network.model.FinalizeOrderRequestDto
+import pl.foodhub.pos.core.network.model.FiscalizeInvoiceRequestDto
+import pl.foodhub.pos.core.network.model.FiscalizeReceiptRequestDto
 import pl.foodhub.pos.core.network.model.IssueInvoiceRequestDto
 import pl.foodhub.pos.core.network.model.IssueReceiptRequestDto
 import pl.foodhub.pos.core.network.model.OrderLineRequestDto
@@ -80,6 +82,22 @@ class SyncQueue
         ) = enqueue(
             SyncOperationType.PRINT_RECEIPT,
             PrintReceiptPayload(placeId, orderId, lines, totalGrossAmount, paymentMethod),
+        )
+
+        suspend fun recordReceiptFiscalization(
+            receiptId: String,
+            request: FiscalizeReceiptRequestDto,
+        ) = enqueue(
+            SyncOperationType.RECORD_RECEIPT_FISCALIZATION,
+            RecordReceiptFiscalizationPayload(receiptId, request),
+        )
+
+        suspend fun recordInvoiceFiscalization(
+            invoiceId: String,
+            request: FiscalizeInvoiceRequestDto,
+        ) = enqueue(
+            SyncOperationType.RECORD_INVOICE_FISCALIZATION,
+            RecordInvoiceFiscalizationPayload(invoiceId, request),
         )
 
         private suspend inline fun <reified T> enqueue(

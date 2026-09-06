@@ -21,4 +21,12 @@ echo "==> pre-push: unit tests"
 echo "==> pre-push: assembleDebug"
 ./gradlew --quiet assembleDebug
 
+# Compiles the androidTest source set and its Hilt component -- catches a
+# DI graph broken only for @HiltAndroidTest (e.g. a TestInstallIn module
+# missing a @Provides the real module has) without needing an emulator,
+# which the full android-quality.yml `instrumented-tests` job (KVM +
+# connectedDebugAndroidTest) is otherwise the only thing that runs.
+echo "==> pre-push: assembleDebugAndroidTest"
+./gradlew --quiet assembleDebugAndroidTest
+
 echo "==> pre-push: all checks passed"

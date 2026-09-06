@@ -26,6 +26,9 @@ class AuthRepository
         /** The place/POS context of the current session, resolved at login (see [PosSession]). */
         val posSession: Flow<PosSession?> = tokenStore.posSession
 
+        /** Scopes the terminal's Mercure/SSE subscription to its place (see `core:realtime`). */
+        val mercureToken: Flow<String?> = tokenStore.mercureToken
+
         /**
          * PIN-only login for the terminal (POST /v1/auth/pos-login). The device is
          * trusted through pairing on the backend; [posSerialNo] is only needed the
@@ -52,6 +55,7 @@ class AuthRepository
                 is ApiResult.Success -> {
                     tokenStore.save(result.value.token, result.value.refreshToken)
                     JwtSessionDecoder.decode(result.value.token)?.let(tokenStore::savePosSession)
+                    tokenStore.saveMercureToken(result.value.mercureToken)
                     ApiResult.Success(Unit)
                 }
                 is ApiResult.HttpError -> result

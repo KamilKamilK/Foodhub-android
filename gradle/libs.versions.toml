@@ -26,6 +26,7 @@ hilt = "2.54"
 # Network / serialization
 retrofit = "2.11.0"
 okhttp = "4.12.0"
+okhttpEventsource = "4.1.1"
 kotlinxSerialization = "1.7.3"
 
 # Persistence — Room 2.6.1 runs on KSP1 (ksp.useKSP2 is left off in gradle.properties).
@@ -73,6 +74,7 @@ retrofit-core = { group = "com.squareup.retrofit2", name = "retrofit", version.r
 retrofit-kotlinx-serialization = { group = "com.squareup.retrofit2", name = "converter-kotlinx-serialization", version.ref = "retrofit" }
 okhttp-core = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
+okhttp-eventsource = { group = "com.launchdarkly", name = "okhttp-eventsource", version.ref = "okhttpEventsource" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }

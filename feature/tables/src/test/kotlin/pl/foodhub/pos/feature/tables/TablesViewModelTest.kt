@@ -23,6 +23,8 @@ import org.junit.Test
 import pl.foodhub.pos.core.auth.AuthRepository
 import pl.foodhub.pos.core.auth.PosSession
 import pl.foodhub.pos.core.common.ApiResult
+import pl.foodhub.pos.core.realtime.RealtimeEvent
+import pl.foodhub.pos.core.realtime.RealtimeEventBus
 import pl.foodhub.pos.core.sync.SyncQueue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -30,6 +32,7 @@ class TablesViewModelTest {
     private val tablesRepository = mockk<TablesRepository>()
     private val authRepository = mockk<AuthRepository>()
     private val syncQueue = mockk<SyncQueue>(relaxed = true)
+    private val realtimeEventBus = RealtimeEventBus()
 
     @Before
     fun setUp() {
@@ -44,7 +47,7 @@ class TablesViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun viewModel() = TablesViewModel(tablesRepository, authRepository, syncQueue)
+    private fun viewModel() = TablesViewModel(tablesRepository, authRepository, syncQueue, realtimeEventBus)
 
     @Test
     fun `load populates tables and marks the occupied ones`() =
@@ -96,6 +99,19 @@ class TablesViewModelTest {
             assertTrue(state.stale)
             assertFalse(state.emptyOffline)
             assertEquals(1, state.tables.size)
+        }
+
+    @Test
+    fun `a realtime poke triggers the same reload a manual pull-to-refresh would`() =
+        runTest {
+            coEvery { tablesRepository.refresh() } returns ApiResult.Success(Unit)
+            viewModel()
+            runCurrent()
+
+            realtimeEventBus.emit(RealtimeEvent.OCCUPIED_TABLES)
+            runCurrent()
+
+            coVerify(exactly = 1) { tablesRepository.refresh() }
         }
 
     @Test

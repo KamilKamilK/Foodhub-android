@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Public URL of the Mercure hub POS terminals subscribe to (mirrors core/network's
+         foodhub_api_base_url: one concrete deployment per build, no in-app selection).
+         Overridden per build variant once real deployments exist. -->
+    <string name="foodhub_mercure_url" translatable="false">https://mercure.dev.foodhub.pl/.well-known/mercure</string>
+</resources>

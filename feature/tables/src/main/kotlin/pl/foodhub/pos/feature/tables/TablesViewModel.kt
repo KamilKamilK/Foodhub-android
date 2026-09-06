@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import pl.foodhub.pos.core.auth.AuthRepository
 import pl.foodhub.pos.core.common.ApiResult
+import pl.foodhub.pos.core.realtime.RealtimeEventBus
 import pl.foodhub.pos.core.sync.SyncQueue
 import java.util.UUID
 import javax.inject.Inject
@@ -48,6 +49,11 @@ data class TableSession(val orderId: String, val tableId: String)
  * `feature:menu` serves the menu screen: a failed [load] falls back to the last-known
  * list with [TablesUiState.stale] set when a cache exists, or reports
  * [TablesUiState.emptyOffline] when there is none to fall back on.
+ *
+ * A Mercure poke (any [RealtimeEvent][pl.foodhub.pos.core.realtime.RealtimeEvent] --
+ * table occupancy and order/receipt/invoice issuance all affect what this screen shows)
+ * triggers the same [load] a manual pull-to-refresh would, since another terminal's
+ * change is exactly the "coming back to this screen" case [load] already handles.
  */
 @HiltViewModel
 class TablesViewModel
@@ -56,6 +62,7 @@ class TablesViewModel
         private val tablesRepository: TablesRepository,
         private val authRepository: AuthRepository,
         private val syncQueue: SyncQueue,
+        private val realtimeEventBus: RealtimeEventBus,
     ) : ViewModel() {
         private val _state = MutableStateFlow(TablesUiState())
         val state = _state.asStateFlow()
@@ -68,6 +75,9 @@ class TablesViewModel
                 tablesRepository.tables.collect { tables ->
                     _state.update { it.copy(tables = tables) }
                 }
+            }
+            viewModelScope.launch {
+                realtimeEventBus.events.collect { load() }
             }
         }
 

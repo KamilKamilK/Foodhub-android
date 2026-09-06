@@ -52,6 +52,7 @@ dependencies {
     implementation(projects.core.auth)
     implementation(projects.core.database)
     implementation(projects.core.sync)
+    implementation(projects.core.realtime)
     implementation(projects.feature.auth)
     implementation(projects.feature.menu)
     implementation(projects.feature.sales)

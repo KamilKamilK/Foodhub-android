@@ -40,6 +40,9 @@ class TokenStore
         private val _posSession = MutableStateFlow(readPosSession())
         val posSession: StateFlow<PosSession?> = _posSession.asStateFlow()
 
+        private val _mercureToken = MutableStateFlow(prefs.getString(KEY_MERCURE_TOKEN, null))
+        val mercureToken: StateFlow<String?> = _mercureToken.asStateFlow()
+
         fun save(
             accessToken: String,
             refreshToken: String?,
@@ -49,6 +52,19 @@ class TokenStore
                 .putString(KEY_REFRESH, refreshToken)
                 .apply()
             _tokens.value = Tokens(accessToken, refreshToken)
+        }
+
+        /**
+         * Scopes the terminal's Mercure/SSE subscription to its place (see
+         * `core:realtime`). Unlike the token pair, this is only ever present when the
+         * authenticating request carried a device payload (login or a device-aware
+         * refresh) -- absent otherwise, e.g. a device-less refresh never overwrites a
+         * previously saved value.
+         */
+        fun saveMercureToken(token: String?) {
+            if (null == token) return
+            prefs.edit().putString(KEY_MERCURE_TOKEN, token).apply()
+            _mercureToken.value = token
         }
 
         /**
@@ -69,6 +85,7 @@ class TokenStore
             prefs.edit().clear().apply()
             _tokens.value = null
             _posSession.value = null
+            _mercureToken.value = null
         }
 
         private fun readTokens(): Tokens? {
@@ -93,5 +110,6 @@ class TokenStore
             const val KEY_PLACE_ID = "pos_session_place_id"
             const val KEY_PLACE_NAME = "pos_session_place_name"
             const val KEY_POS_ID = "pos_session_pos_id"
+            const val KEY_MERCURE_TOKEN = "mercure_token"
         }
     }

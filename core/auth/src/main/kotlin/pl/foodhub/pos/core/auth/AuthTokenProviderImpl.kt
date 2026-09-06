@@ -6,6 +6,7 @@ import pl.foodhub.pos.core.common.ApiResult
 import pl.foodhub.pos.core.network.api.AuthApi
 import pl.foodhub.pos.core.network.apiCall
 import pl.foodhub.pos.core.network.auth.AuthTokenProvider
+import pl.foodhub.pos.core.network.model.DeviceDto
 import pl.foodhub.pos.core.network.model.RefreshTokenRequestDto
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -20,6 +21,7 @@ class AuthTokenProviderImpl
     constructor(
         private val tokenStore: TokenStore,
         private val authApi: AuthApi,
+        private val deviceIdentity: DeviceIdentityProvider,
     ) : AuthTokenProvider {
         private val refreshMutex = Mutex()
 
@@ -28,9 +30,18 @@ class AuthTokenProviderImpl
         override suspend fun refresh(): Boolean =
             refreshMutex.withLock {
                 val refreshToken = tokenStore.tokens.value?.refreshToken ?: return false
-                when (val result = apiCall { authApi.refresh(RefreshTokenRequestDto(refreshToken)) }) {
+                val device =
+                    DeviceDto(
+                        macAddress = deviceIdentity.deviceId(),
+                        name = deviceIdentity.model(),
+                        model = deviceIdentity.model(),
+                        version = deviceIdentity.osVersion(),
+                    )
+                when (val result = apiCall { authApi.refresh(RefreshTokenRequestDto(refreshToken, device)) }) {
                     is ApiResult.Success -> {
                         tokenStore.save(result.value.token, result.value.refreshToken ?: refreshToken)
+                        JwtSessionDecoder.decode(result.value.token)?.let(tokenStore::savePosSession)
+                        tokenStore.saveMercureToken(result.value.mercureToken)
                         true
                     }
                     else -> false

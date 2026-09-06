@@ -43,7 +43,7 @@ konwencjonalne pluginy można wprowadzić refaktoringiem.
 ## 2. Uzupełnienia do produkcyjnego builda
 
 - [ ] `signingConfigs` + keystore dla `release` (`keystore.properties`, w `.gitignore`) — dziś `release` jest niepodpisany.
-- [ ] `productFlavor` / build config per klient dla `foodhub_api_base_url` (dziś jeden URL w `core/network/src/main/res/values/config.xml`).
+- [ ] `productFlavor` / build config per klient dla `foodhub_api_base_url` (dziś jeden URL w `core/network/src/main/res/values/config.xml`) i analogicznie dla `foodhub_mercure_url` (`core/realtime/src/main/res/values/config.xml`).
 - [ ] `CertificatePinner` w `NetworkModule` (TODO w kodzie, sekcja 12 arch-doca).
 - [ ] `gradle/verification-metadata.xml` — weryfikacja checksumów zależności; `./gradlew --write-verification-metadata sha256 help` po ustabilizowaniu wersji.
 - [ ] Ochrona brancha `main` na GitHubie: wymagany zielony `Android Quality` (oba jobs — `android-quality` i `instrumented-tests`).

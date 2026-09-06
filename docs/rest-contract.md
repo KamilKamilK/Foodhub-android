@@ -9,8 +9,8 @@ Wycinek API `foodhub-api` używany przez appkę. Wyekstrahowany z przeglądarkow
 
 | Metoda | Ścieżka | Uwagi |
 |---|---|---|
-| POST | `/v1/auth/pos-login` | `{ pin, device: { macAddress, name, model, platform, version }, posId? }` → `{ token, refreshToken }`. Nowy authenticator w `foodhub-api` (`PosPinAuthenticator`). 401 = zły PIN / urządzenie niesparowane / niejednoznaczny PIN. |
-| POST | `/v1/auth/refresh-token` | `{ refreshToken }` → `{ token, refreshToken }`. Wywoływane przez `TokenRefreshAuthenticator` na 401. |
+| POST | `/v1/auth/pos-login` | `{ pin, device: { macAddress, name, model, platform, version }, posId? }` → `{ token, refreshToken, mercureToken? }`. Nowy authenticator w `foodhub-api` (`PosPinAuthenticator`). 401 = zły PIN / urządzenie niesparowane / niejednoznaczny PIN. |
+| POST | `/v1/auth/refresh-token` | `{ refreshToken, device? }` → `{ token, refreshToken, mercureToken? }`. Wywoływane przez `TokenRefreshAuthenticator` na 401; `device` musi być dołączone, żeby backend odtworzył kontekst miejsca i odświeżył `mercureToken` (patrz Faza 4 niżej) -- bez niego odpowiedź nie niesie żadnego z dwóch opcjonalnych pól. |
 
 ## Menu (tylko odczyt)
 
@@ -55,3 +55,15 @@ Zwraca `[{ id, name, ip, port, role: "KITCHEN"\|"RECEIPT", orderDirectionIds }]`
 świeżo (bez cache'a) przez `core:printing`'s `PrintRouter` przy każdym wydruku — KITCHEN
 routuje linie po `orderDirectionId` (z `PosMenuItemDto`), RECEIPT dostaje pełny dokument
 niezależnie od kierunku.
+
+## Real-time (Faza 4)
+
+Nie REST, ale konsumuje `mercureToken` z sekcji Auth powyżej. `core:realtime`'s
+`MercureSubscriber` (`com.launchdarkly:okhttp-eventsource`, `BackgroundEventSource`)
+otwiera SSE do `{foodhub_mercure_url}?topic=places/{placeId}/pos-state` z nagłówkiem
+`Authorization: Bearer {mercureToken}`. Payload to wyłącznie `{ resource, placeId }`
+(`resource` ∈ `occupied-tables | receipt-issued | invoice-issued | order-created`) —
+sygnał "coś się zmieniło", nigdy dane encji; odbiorca (dziś: `TablesViewModel`) reaguje
+zwykłym REST-owym `load()`. `RealtimeSessionController` startuje/zatrzymuje subskrypcję
+reaktywnie na `AuthRepository.sessionState`/`posSession`/`mercureToken`, więc logowanie i
+wylogowanie nie wymagają osobnego wywołania.

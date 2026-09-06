@@ -20,10 +20,16 @@ data class PosLoginRequestDto(
     @SerialName("posId") val posId: String? = null,
 )
 
-/** Body for POST /v1/auth/refresh-token. */
+/**
+ * Body for POST /v1/auth/refresh-token. [device] is included so the backend can
+ * re-resolve the place/POS context (RefreshTokenAuthenticator) and reissue a
+ * [AuthTokensDto.mercureToken] scoped to it -- without it, the response carries
+ * neither claim, since foodhub-api only resolves them from a device payload.
+ */
 @Serializable
 data class RefreshTokenRequestDto(
     @SerialName("refreshToken") val refreshToken: String,
+    @SerialName("device") val device: DeviceDto? = null,
 )
 
 /** Response shared by /auth/login, /auth/pos-login and /auth/refresh-token. */
@@ -31,4 +37,5 @@ data class RefreshTokenRequestDto(
 data class AuthTokensDto(
     @SerialName("token") val token: String,
     @SerialName("refreshToken") val refreshToken: String? = null,
+    @SerialName("mercureToken") val mercureToken: String? = null,
 )

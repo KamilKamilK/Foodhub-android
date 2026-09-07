@@ -19,7 +19,12 @@ android {
         testInstrumentationRunner = "pl.foodhub.pos.HiltTestRunner"
     }
 
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        // BuildConfig.VERSION_CODE is compared against the backend's advertised
+        // pos-app versionCode (pl.foodhub.pos.update) to offer an in-app update.
+        buildConfig = true
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -76,6 +81,11 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.hilt.work)
 
+    // core:network's OkHttp dependency is `implementation`-only there, so
+    // PosAppUpdateRepository (which reads the raw okhttp3.ResponseBody streamed
+    // back by PosAppApi.apk()) needs its own copy of the library to compile.
+    implementation(libs.okhttp.core)
+
     androidTestImplementation(libs.hilt.android.testing)
     kspAndroidTest(libs.hilt.compiler)
     androidTestImplementation(libs.androidx.test.ext.junit)
@@ -91,4 +101,9 @@ dependencies {
     androidTestImplementation(libs.retrofit.kotlinx.serialization)
     androidTestImplementation(libs.okhttp.core)
     androidTestImplementation(libs.kotlinx.serialization.json)
+
+    testImplementation(libs.junit4)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
+    testImplementation(libs.mockk)
 }

@@ -13,6 +13,7 @@ import pl.foodhub.pos.core.common.DispatcherProvider
 import pl.foodhub.pos.core.network.api.AuthApi
 import pl.foodhub.pos.core.network.api.FiscalDeviceApi
 import pl.foodhub.pos.core.network.api.MenuApi
+import pl.foodhub.pos.core.network.api.PosAppApi
 import pl.foodhub.pos.core.network.api.PrintersApi
 import pl.foodhub.pos.core.network.api.SalesApi
 import pl.foodhub.pos.core.network.api.TablesApi
@@ -121,4 +122,8 @@ object TestNetworkModule {
     @Provides
     @Singleton
     fun fiscalDeviceApi(retrofit: Retrofit): FiscalDeviceApi = retrofit.create(FiscalDeviceApi::class.java)
+
+    @Provides
+    @Singleton
+    fun posAppApi(retrofit: Retrofit): PosAppApi = retrofit.create(PosAppApi::class.java)
 }

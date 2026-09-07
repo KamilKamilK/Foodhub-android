@@ -4,6 +4,10 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- In-app update install (pl.foodhub.pos.update): the device owner must grant
+         "install unknown apps" for this app once, expected on a dedicated,
+         admin-controlled POS terminal that never goes through the Play Store. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:name=".FoodHubPosApplication"
@@ -25,6 +29,19 @@
                 android:name="androidx.work.WorkManagerInitializer"
                 android:value="androidx.startup"
                 tools:node="remove" />
+        </provider>
+
+        <!-- Exposes the downloaded APK (private cache dir) to the system installer
+             (pl.foodhub.pos.update.AppUpdateHost) without granting it broader
+             filesystem access. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
         </provider>
 
         <activity
